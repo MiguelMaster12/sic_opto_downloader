@@ -67,6 +67,12 @@ def project_path(path):
         p = SCRIPT_DIR / p
     return p
 
+def find_wvd_files():
+    return (list(SECRETS_DIR.glob("*.wvd")) +
+            list(SCRIPT_DIR.glob("*.wvd")) +
+            list(Path.home().glob("*.wvd")) +
+            list(Path.home().glob(".wvd/*.wvd")))
+
 def chrome_extension_args():
     manifest = UBLOCK_EXTENSION_DIR / "manifest.json"
     if manifest.exists():
@@ -1200,10 +1206,7 @@ def get_keys_local(pssh_b64, license_url, log_fn):
         log_fn("❌ pip install pywidevine\n")
         return None
 
-    wvd_paths = (list(SECRETS_DIR.glob("*.wvd")) +
-                 list(SCRIPT_DIR.glob("*.wvd")) +
-                 list(Path.home().glob("*.wvd")) +
-                 list(Path.home().glob(".wvd/*.wvd")))
+    wvd_paths = find_wvd_files()
     if not wvd_paths:
         log_fn("❌ .wvd não encontrado. Coloca o ficheiro em secrets/.\n")
         return None
@@ -2030,6 +2033,24 @@ class App(tk.Tk):
 
         tk.Frame(p, bg=c["PANEL"], height=1).pack(fill="x", pady=14)
 
+        tk.Label(p, text="Secrets e .wvd",
+                 bg=c["BG"], fg=c["FG"],
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0,8))
+
+        self.var_wvd_status = tk.StringVar(value=".wvd: a verificar...")
+        self.lbl_wvd_status = tk.Label(
+            p, textvariable=self.var_wvd_status, bg=c["BG"], fg=c["MUTED"],
+            font=("Segoe UI", 9, "bold"))
+        self.lbl_wvd_status.pack(anchor="w", pady=(0,6))
+
+        secret_buttons = ttk.Frame(p); secret_buttons.pack(fill="x", pady=(0,4))
+        ttk.Button(secret_buttons, text="Abrir pasta secrets", style="Sec.TButton",
+                   command=self._open_secrets_dir).pack(side="left")
+        ttk.Button(secret_buttons, text="Atualizar estado .wvd", style="Sec.TButton",
+                   command=self._refresh_wvd_status).pack(side="left", padx=(6,0))
+
+        tk.Frame(p, bg=c["PANEL"], height=1).pack(fill="x", pady=14)
+
         tk.Label(p, text="Gerar ficheiro .wvd",
                  bg=c["BG"], fg=c["FG"],
                  font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0,8))
@@ -2076,6 +2097,7 @@ class App(tk.Tk):
                       "Fecha qualquer Chrome aberto na porta 9222 antes de iniciar.",
                  bg=c["PANEL"], fg=c["MUTED"], font=("Segoe UI", 9),
                  justify="left").pack(anchor="w")
+        self._refresh_wvd_status()
 
     def _tab_log(self, p):
         c = self._c
@@ -2148,6 +2170,32 @@ class App(tk.Tk):
         f = filedialog.askopenfilename(filetypes=filetypes or [("Executável","*.exe"),("Todos","*")])
         if f: var.set(f)
 
+    def _refresh_wvd_status(self):
+        wvds = find_wvd_files()
+        if wvds:
+            wvd = wvds[0]
+            text = f"✅ .wvd encontrado: {wvd.name}"
+            fg = self._c["OK"]
+        else:
+            text = "⚠ .wvd não encontrado em secrets/"
+            fg = self._c["WARN"]
+        self.var_wvd_status.set(text)
+        self.lbl_wvd_status.config(fg=fg)
+
+    def _open_secrets_dir(self):
+        SECRETS_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", str(SECRETS_DIR)])
+            elif os.name == "nt":
+                os.startfile(str(SECRETS_DIR))  # type: ignore[attr-defined]
+            else:
+                subprocess.Popen(["xdg-open", str(SECRETS_DIR)])
+            self._log(f"📁 Pasta secrets aberta: {SECRETS_DIR}\n")
+        except Exception as e:
+            self._log(f"❌ Não foi possível abrir secrets/: {e}\n")
+            messagebox.showerror("Secrets", f"Não foi possível abrir a pasta:\n{SECRETS_DIR}")
+
     def _generate_wvd(self):
         private_key = project_path(self._clean_entry_value(self.var_wvd_private_key.get()))
         client_id = project_path(self._clean_entry_value(self.var_wvd_client_id.get()))
@@ -2217,13 +2265,16 @@ class App(tk.Tk):
                             self._log(f"✅ .wvd disponível: {wvds[-1]}\n")
                         else:
                             self._log("⚠ Comando terminou, mas não encontrei nenhum .wvd na pasta de saída.\n")
+                    self.after(0, self._refresh_wvd_status)
                     self.after(0, lambda: messagebox.showinfo("Gerar .wvd", "Processo concluído. Confirma o Log."))
                 else:
                     self._log(f"❌ pywidevine terminou com erro ({code}).\n")
+                    self.after(0, self._refresh_wvd_status)
                     self.after(0, lambda: messagebox.showerror("Gerar .wvd", "Falhou. Consulta o Log."))
             except Exception as e:
                 msg = str(e)
                 self._log(f"❌ Erro ao gerar .wvd: {e}\n")
+                self.after(0, self._refresh_wvd_status)
                 self.after(0, lambda: messagebox.showerror("Gerar .wvd", f"Erro: {msg}"))
             finally:
                 self.after(0, lambda: (
@@ -2246,11 +2297,9 @@ class App(tk.Tk):
                 self._log(f"  ⚠ {pkg}: pip install {pkg}\n")
         chrome = self._clean_entry_value(self.var_chrome.get())
         self._log(f"  {'✅' if Path(chrome).exists() else '❌'} Chrome: {chrome}\n")
-        wvds = (list(SECRETS_DIR.glob("*.wvd")) +
-                list(SCRIPT_DIR.glob("*.wvd")) +
-                list(Path.home().glob("*.wvd")) +
-                list(Path.home().glob(".wvd/*.wvd")))
+        wvds = find_wvd_files()
         self._log(f"  {'✅' if wvds else '⚠'} .wvd: {wvds[0] if wvds else 'não encontrado'}\n")
+        self._refresh_wvd_status()
 
     def _get_common_args(self):
         for name, var in self.tool_vars.items():
