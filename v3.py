@@ -19,6 +19,7 @@ from tkinter import ttk, filedialog, scrolledtext, messagebox
 import threading
 import subprocess
 import os
+import sys
 import re
 import json
 import shutil
@@ -1863,7 +1864,10 @@ class App(tk.Tk):
                                (" LOG ",      self._tab_log)]:
             tab = ttk.Frame(nb, padding=16)
             nb.add(tab, text=text)
-            builder(tab)
+            if text.strip() == "CONFIG":
+                builder(self._scrollable_frame(tab))
+            else:
+                builder(tab)
 
         bot = ttk.Frame(main, padding=(0,8,0,0))
         bot.pack(fill="x")
@@ -1890,6 +1894,27 @@ class App(tk.Tk):
         self.btn_start = ttk.Button(bot, text="▶  INICIAR DOWNLOAD",
                                     command=self._start)
         self.btn_start.pack(side="right", padx=(8,0))
+
+    def _scrollable_frame(self, parent):
+        c = self._c
+        canvas = tk.Canvas(parent, bg=c["BG"], highlightthickness=0, borderwidth=0)
+        scroll = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
+        window_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        def update_scroll(_event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def update_width(event):
+            canvas.itemconfigure(window_id, width=event.width)
+
+        inner.bind("<Configure>", update_scroll)
+        canvas.bind("<Configure>", update_width)
+        return inner
 
     def _tab_dl(self, p):
         c = self._c
@@ -2003,6 +2028,46 @@ class App(tk.Tk):
 
         ttk.Button(p, text="💾  Guardar configuração", command=self._save_cfg).pack(anchor="w")
 
+        tk.Frame(p, bg=c["PANEL"], height=1).pack(fill="x", pady=14)
+
+        tk.Label(p, text="Gerar ficheiro .wvd",
+                 bg=c["BG"], fg=c["FG"],
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0,8))
+
+        self._lbl(p, "🔑  Private key")
+        self.var_wvd_private_key = tk.StringVar(value=str(SECRETS_DIR / "private_key.pem"))
+        key_row = ttk.Frame(p); key_row.pack(fill="x")
+        ttk.Entry(key_row, textvariable=self.var_wvd_private_key,
+                  font=("Segoe UI",10)).pack(side="left", fill="x", expand=True)
+        ttk.Button(key_row, text="…", style="Sec.TButton", width=3,
+                   command=lambda: self._pick_file(
+                       self.var_wvd_private_key,
+                       [("Private key", "*.pem"), ("Todos", "*")]
+                   )).pack(side="left", padx=(4,0))
+
+        self._lbl(p, "🪪  Client ID")
+        self.var_wvd_client_id = tk.StringVar(value=str(SECRETS_DIR / "client_id.bin"))
+        client_row = ttk.Frame(p); client_row.pack(fill="x")
+        ttk.Entry(client_row, textvariable=self.var_wvd_client_id,
+                  font=("Segoe UI",10)).pack(side="left", fill="x", expand=True)
+        ttk.Button(client_row, text="…", style="Sec.TButton", width=3,
+                   command=lambda: self._pick_file(
+                       self.var_wvd_client_id,
+                       [("Client ID", "*.bin"), ("Todos", "*")]
+                   )).pack(side="left", padx=(4,0))
+
+        self._lbl(p, "📁  Pasta de saída")
+        self.var_wvd_output_dir = tk.StringVar(value=str(SECRETS_DIR))
+        out_row = ttk.Frame(p); out_row.pack(fill="x")
+        ttk.Entry(out_row, textvariable=self.var_wvd_output_dir,
+                  font=("Segoe UI",10)).pack(side="left", fill="x", expand=True)
+        ttk.Button(out_row, text="…", style="Sec.TButton", width=3,
+                   command=lambda: self._pick_dir_to(self.var_wvd_output_dir)).pack(side="left", padx=(4,0))
+
+        self.btn_generate_wvd = ttk.Button(
+            p, text="Gerar .wvd", style="Sec.TButton", command=self._generate_wvd)
+        self.btn_generate_wvd.pack(anchor="w", pady=(10,0))
+
         info = tk.Frame(p, bg=c["PANEL"], pady=10, padx=12)
         info.pack(fill="x", pady=(10,0))
         tk.Label(info,
@@ -2079,9 +2144,94 @@ class App(tk.Tk):
         d = filedialog.askdirectory()
         if d: var.set(d)
 
-    def _pick_file(self, var):
-        f = filedialog.askopenfilename(filetypes=[("Executável","*.exe"),("Todos","*")])
+    def _pick_file(self, var, filetypes=None):
+        f = filedialog.askopenfilename(filetypes=filetypes or [("Executável","*.exe"),("Todos","*")])
         if f: var.set(f)
+
+    def _generate_wvd(self):
+        private_key = project_path(self._clean_entry_value(self.var_wvd_private_key.get()))
+        client_id = project_path(self._clean_entry_value(self.var_wvd_client_id.get()))
+        output_dir = project_path(self._clean_entry_value(self.var_wvd_output_dir.get())) or SECRETS_DIR
+
+        if not private_key or not private_key.exists():
+            messagebox.showerror("Gerar .wvd", "Seleciona um ficheiro private_key.pem válido.")
+            return
+        if not client_id or not client_id.exists():
+            messagebox.showerror("Gerar .wvd", "Seleciona um ficheiro client_id.bin válido.")
+            return
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        before = {p.resolve() for p in output_dir.glob("*.wvd")}
+        pywidevine_bin = resolve_tool("pywidevine")
+        if pywidevine_bin:
+            cmd = [
+                pywidevine_bin,
+                "create-device",
+                "-k", str(private_key),
+                "-c", str(client_id),
+                "-t", "ANDROID",
+                "-l", "3",
+                "-o", str(output_dir),
+            ]
+        else:
+            cmd = [
+                sys.executable,
+                "-c", "from pywidevine.main import main; main()",
+                "create-device",
+                "-k", str(private_key),
+                "-c", str(client_id),
+                "-t", "ANDROID",
+                "-l", "3",
+                "-o", str(output_dir),
+            ]
+
+        self.btn_generate_wvd.config(state="disabled")
+        self._set_progress(0, "A gerar .wvd...")
+        self._log("\n🔑 Gerar .wvd\n")
+        self._log(f"   Private key: {private_key}\n")
+        self._log(f"   Client ID: {client_id}\n")
+        self._log(f"   Saída: {output_dir}\n")
+
+        def worker():
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(SCRIPT_DIR),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                for line in proc.stdout or []:
+                    self._log(f"   {line}")
+                code = proc.wait()
+                after = {p.resolve() for p in output_dir.glob("*.wvd")}
+                created = sorted(after - before)
+                if code == 0:
+                    if created:
+                        self._log(f"✅ .wvd gerado: {created[-1]}\n")
+                    else:
+                        wvds = sorted(output_dir.glob("*.wvd"), key=lambda p: p.stat().st_mtime)
+                        if wvds:
+                            self._log(f"✅ .wvd disponível: {wvds[-1]}\n")
+                        else:
+                            self._log("⚠ Comando terminou, mas não encontrei nenhum .wvd na pasta de saída.\n")
+                    self.after(0, lambda: messagebox.showinfo("Gerar .wvd", "Processo concluído. Confirma o Log."))
+                else:
+                    self._log(f"❌ pywidevine terminou com erro ({code}).\n")
+                    self.after(0, lambda: messagebox.showerror("Gerar .wvd", "Falhou. Consulta o Log."))
+            except Exception as e:
+                msg = str(e)
+                self._log(f"❌ Erro ao gerar .wvd: {e}\n")
+                self.after(0, lambda: messagebox.showerror("Gerar .wvd", f"Erro: {msg}"))
+            finally:
+                self.after(0, lambda: (
+                    self.btn_generate_wvd.config(state="normal"),
+                    self._set_progress(0, "Pronto.")
+                ))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _check_tools(self):
         self._log("\n🔧 Verificar:\n")

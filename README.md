@@ -38,6 +38,7 @@ O projeto não inclui credenciais, contas, conteúdos, ficheiros `.wvd`, nem qua
 - Registo de episódios já descarregados
 - Perfil Chrome dedicado
 - Instalação automática de dependências
+- Gerador `.wvd` pela interface a partir de `private_key.pem` e `client_id.bin`
 - Chrome iniciado minimizado, com áudio mutado e autoplay bloqueado
 - Suporte a uBlock Origin Lite no perfil debug, quando instalado
 - Configuração persistente
@@ -148,12 +149,9 @@ Este é o método recomendado. O CDM é extraído de um dispositivo ou emulador 
 
 1. Prepara um ambiente Android próprio (dispositivo físico ou emulador via Android Studio).
 2. Segue o guia acima para extrair o CDM.
-3. Copia os ficheiros `client_id.bin` e `private_key.pem` para a pasta `secrets/`.
-4. Executa o comando para gerar o `.wvd`:
-
-```bash
-pywidevine create-device -k "secrets/private_key.pem" -c "secrets/client_id.bin" -t "ANDROID" -l 3 -o "./secrets/"
-```
+3. Guarda os ficheiros `client_id.bin` e `private_key.pem`.
+4. Abre a aplicação, vai à aba **CONFIG** e usa a secção **Gerar ficheiro .wvd**.
+5. Seleciona os dois ficheiros, escolhe `secrets/` como pasta de saída e clica em **Gerar .wvd**.
 
 ---
 
@@ -163,14 +161,11 @@ Caso não queiras criar o teu próprio, existem ficheiros partilhados publicamen
 
 - [Ready to use CDMs — VideoHelp Forum](https://forum.videohelp.com/threads/413719-Ready-to-use-CDMs-available-here%21)
 
-O ZIP contém os ficheiros `client_id.bin` e `private_key.pem`. Após descarregar:
+O ZIP costuma conter os ficheiros `client_id.bin` e `private_key.pem`. Após descarregar:
 
-1. Extrai o `client_id.bin` e o `private_key.pem` para a pasta `secrets/`.
-2. Executa o comando para gerar o `.wvd`:
-
-```bash
-pywidevine create-device -k "secrets/private_key.pem" -c "secrets/client_id.bin" -t "ANDROID" -l 3 -o "./secrets/"
-```
+1. Extrai o `client_id.bin` e o `private_key.pem`.
+2. Abre a aplicação, vai à aba **CONFIG** e usa a secção **Gerar ficheiro .wvd**.
+3. Seleciona os dois ficheiros, escolhe `secrets/` como pasta de saída e clica em **Gerar .wvd**.
 
 > ⚠️ Usa apenas ficheiros de fontes em que confias. A utilização de CDMs de terceiros é da tua inteira responsabilidade.
 
@@ -182,14 +177,15 @@ pywidevine create-device -k "secrets/private_key.pem" -c "secrets/client_id.bin"
 
 ## 🛠️ Primeiro Uso
 
-1. Coloca o teu ficheiro `.wvd` em `secrets/`.
-2. Inicia a aplicação.
-3. Vai à aba **CONFIG**.
-4. Confirma o caminho do Chrome.
-5. Mantém o perfil Chrome como `chrome-debug-profile`.
-6. Abre o Chrome através da aplicação.
-7. Faz login na tua conta SIC OPTO.
-8. Regressa à aba **DOWNLOAD**.
+1. Inicia a aplicação.
+2. Vai à aba **CONFIG**.
+3. Confirma o caminho do Chrome.
+4. Se já tens um `.wvd`, coloca-o em `secrets/`.
+5. Se tens `private_key.pem` e `client_id.bin`, usa **Gerar ficheiro .wvd** para criar o `.wvd` em `secrets/`.
+6. Mantém o perfil Chrome como `chrome-debug-profile`.
+7. Abre o Chrome através da aplicação.
+8. Faz login na tua conta SIC OPTO.
+9. Regressa à aba **DOWNLOAD**.
 
 > Se o `.wvd` não existir ou não for válido, a aplicação pode capturar dados técnicos, mas falhará na etapa de obtenção de chaves/desencriptação.
 
@@ -222,52 +218,6 @@ Clica em **SÉRIE**, seleciona os episódios pretendidos e confirma.
 - Episódios já descarregados aparecem assinalados automaticamente.
 - Cache: `state/sic_opto_cache.json`
 - Histórico: `state/sic_opto_downloads.json`
-
----
-
-## ⚙️ Configuração
-
-O ficheiro de configuração encontra-se em:
-
-```
-config/sic_opto_config.json
-```
-
-Exemplo:
-
-```json
-{
-  "chrome_exe": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "profile_dir": "chrome-debug-profile",
-  "profile_name": "Default",
-  "output_dir": "downloads",
-  "quality": "best"
-}
-```
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-.
-├── v3.py
-├── instalar_dependencias.py
-├── README.md
-├── assets/
-├── config/
-├── platform/
-│   ├── windows/
-│   ├── macos/
-│   └── linux/
-├── scripts/
-├── state/
-├── secrets/
-├── vendor/
-└── chrome-debug-profile/
-```
-
----
 
 ## 📦 Dependências
 
@@ -348,46 +298,6 @@ A validação final detetou um ficheiro inválido. Confirma:
 - validade do ficheiro `.wvd`;
 - disponibilidade dos recursos necessários durante o processo.
 </details>
-
----
-
-## 🧑‍💻 Desenvolvimento
-
-**Verificar sintaxe:**
-```bash
-python -m py_compile v3.py instalar_dependencias.py
-```
-
-**Instalação manual de dependências:**
-```bash
-python instalar_dependencias.py
-```
-
-**Execução manual:**
-```bash
-python v3.py
-```
-
----
-
-## 🔒 Segurança
-
-Nunca partilhes as seguintes pastas ou ficheiros:
-
-```
-.venv/
-chrome-debug-profile/
-secrets/
-state/
-vendor/
-downloads/
-```
-
-Também não deves partilhar: ficheiros `.wvd`, cookies, perfis Chrome, credenciais, chaves privadas ou conteúdos descarregados.
-
-O `.gitignore` já exclui estes caminhos do repositório.
-
----
 
 ## 🤝 Contribuições
 
