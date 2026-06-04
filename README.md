@@ -276,6 +276,21 @@ O instalador prepara automaticamente:
 ## 🐛 Problemas Comuns
 
 <details>
+<summary><strong>macOS bloqueia a app por programador não verificado</strong></summary>
+
+Enquanto a app não estiver assinada/notarizada pela Apple, o macOS pode mostrar uma mensagem a dizer que não conseguiu confirmar se a aplicação contém malware.
+
+Para abrir depois de instalar em `Applications`:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/SIC OPTO Downloader.app"
+open "/Applications/SIC OPTO Downloader.app"
+```
+
+Também podes tentar abrir com botão direito no Finder e escolher **Abrir**.
+</details>
+
+<details>
 <summary><strong>.wvd não encontrado</strong></summary>
 
 Coloca o ficheiro `.wvd` dentro da pasta:
