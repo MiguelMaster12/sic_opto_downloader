@@ -495,7 +495,7 @@ def main():
         print(GREEN(BOLD("  [OK] Tudo instalado! Podes correr: python v3.py")))
     else:
         print(YELLOW(BOLD("  ⚠ Algumas dependências precisam de instalação manual.")))
-        print(YELLOW("    Consulta as instruções acima e o ficheiro LEIA_ME.md"))
+        print(YELLOW("    Consulta as instruções acima e o ficheiro README.md"))
     print()
 
 

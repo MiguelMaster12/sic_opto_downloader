@@ -42,6 +42,29 @@ Cada utilizador é responsável pela forma como usa a ferramenta. O projeto não
 
 > O `.wvd` não é fornecido, não é gerado e não é descarregado por este projeto.
 
+## Como Obter Um `.wvd`
+
+Este projeto precisa de um CDM Widevine L3 pessoal em formato `.wvd`.
+
+O ficheiro deve ser obtido pelo próprio utilizador, a partir de um ambiente/dispositivo que controla e apenas quando isso for permitido pela lei local e pelos termos dos serviços que usa.
+
+Guia externo de referência:
+
+- [Dumping Your own L3 CDM with Android Studio - VideoHelp Forum](https://forum.videohelp.com/threads/408031-Dumping-Your-own-L3-CDM-with-Android-Studio)
+
+Resumo seguro do processo:
+
+1. Preparar um ambiente Android próprio.
+2. Seguir o guia externo para gerar/exportar o CDM.
+3. Converter/guardar o resultado em formato `.wvd` compatível com `pywidevine`.
+4. Colocar o ficheiro final em:
+
+```text
+secrets/
+```
+
+Não partilhes o teu `.wvd`, `client_id.bin`, `private_key.pem`, keys, cookies ou perfil Chrome.
+
 ## Instalação Rápida
 
 ### Windows
@@ -131,7 +154,7 @@ Notas:
 ├── run_windows.ps1
 ├── run_macos.sh
 ├── run_linux.sh
-├── LEIA_ME.md
+├── README.md
 ├── config/
 ├── state/
 ├── secrets/
@@ -237,7 +260,7 @@ python v3.py
 
 Este projeto é mantido em tempo livre. Se te foi útil, podes apoiar aqui:
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buy-me-a-coffee)](https://www.buymeacoffee.com/miguelmaster12)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/miguelmaster12)
 
 ## Contribuições
 
