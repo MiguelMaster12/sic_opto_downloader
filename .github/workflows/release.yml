@@ -130,7 +130,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglib2.0-0 libxkbcommon-x11-0 libxcb-cursor0 fuse libfuse2
+          sudo apt-get install -y libglib2.0-0 libxkbcommon-x11-0 libxcb-cursor0 fuse libfuse2 imagemagick
       - name: Build Linux AppImage
         run: |
           chmod +x scripts/build_linux_appimage.sh

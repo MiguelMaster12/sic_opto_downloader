@@ -42,7 +42,15 @@ cp "dist/$PACKAGE_NAME" "$APPDIR/usr/bin/$APP_NAME"
 chmod +x "$APPDIR/usr/bin/$APP_NAME"
 
 if [[ -f "assets/app-icon.png" ]]; then
-  cp "assets/app-icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+  if command -v sips >/dev/null 2>&1; then
+    sips -z 256 256 "assets/app-icon.png" --out "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png" >/dev/null
+  elif command -v magick >/dev/null 2>&1; then
+    magick "assets/app-icon.png" -resize 256x256 "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+  elif command -v convert >/dev/null 2>&1; then
+    convert "assets/app-icon.png" -resize 256x256 "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+  else
+    cp "assets/app-icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+  fi
 fi
 
 cat > "$APPDIR/usr/share/applications/$APP_NAME.desktop" <<EOF
