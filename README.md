@@ -53,28 +53,41 @@ O projeto não inclui credenciais, contas, conteúdos, ficheiros `.wvd`, nem qua
 - Ficheiro `.wvd` pessoal colocado em `secrets/`
 
 > O ficheiro `.wvd` **não é fornecido** por este projeto.
+> Sem um `.wvd` válido, a ferramenta pode abrir e configurar o ambiente, mas **não consegue desencriptar nem concluir downloads protegidos**.
 
 ---
 
 ## 🚀 Instalação
 
-A forma recomendada de utilização é através dos pacotes disponibilizados na página de [Releases](../../releases).
+A forma recomendada de utilização é através dos ficheiros disponibilizados na página de [Releases](../../releases).
 
 ### 1. Descarregar
 
-Escolhe o pacote correspondente ao teu sistema operativo:
+Escolhe o ficheiro correspondente ao teu sistema operativo.
+
+**Executáveis / DMG / AppImage**
 
 | Sistema Operativo | Ficheiro |
 |---|---|
-| Windows | `sic-opto-downloader-windows.zip` |
-| macOS | `sic-opto-downloader-macos.zip` |
-| Linux | `sic-opto-downloader-linux.zip` |
+| Windows | `sic-opto-downloader-*-windows.exe` |
+| macOS | `sic-opto-downloader-*-macos.dmg` |
+| Linux | `sic-opto-downloader-*-linux.AppImage` |
 
-### 2. Extrair
+**Pacotes ZIP com scripts de instalação**
 
-Extrai o conteúdo do ficheiro ZIP para uma pasta à tua escolha.
+| Sistema Operativo | Ficheiro |
+|---|---|
+| Windows | `sic-opto-downloader-*-windows.zip` |
+| macOS | `sic-opto-downloader-*-macos.zip` |
+| Linux | `sic-opto-downloader-*-linux.zip` |
 
-### 3. Instalar Dependências
+### 2. Instalar ou Extrair
+
+Se descarregaste um executável, DMG ou AppImage, abre-o diretamente.
+
+Se descarregaste um ZIP, extrai o conteúdo para uma pasta à tua escolha.
+
+### 3. Instalar Dependências via ZIP
 
 **Windows**
 ```powershell
@@ -117,6 +130,8 @@ chmod +x install_linux.sh run_linux.sh
 ## 🔑 Como Obter um `.wvd`
 
 Este projeto requer um CDM Widevine L3 em formato `.wvd`.
+
+> **Importante:** sem um `.wvd` válido em `secrets/`, os downloads protegidos não são concluídos.
 
 Tens duas opções:
 
@@ -175,6 +190,8 @@ pywidevine create-device -k "secrets/private_key.pem" -c "secrets/client_id.bin"
 6. Abre o Chrome através da aplicação.
 7. Faz login na tua conta SIC OPTO.
 8. Regressa à aba **DOWNLOAD**.
+
+> Se o `.wvd` não existir ou não for válido, a aplicação pode capturar dados técnicos, mas falhará na etapa de obtenção de chaves/desencriptação.
 
 ---
 
