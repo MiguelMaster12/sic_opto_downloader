@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "v3.py"
+      - "instalar_dependencias.py"
+      - "scripts/**"
+      - "platform/**"
+      - "assets/**"
+      - "config/**"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
       version:
