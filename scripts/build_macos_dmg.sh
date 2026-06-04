@@ -108,6 +108,105 @@ show_dialog() {
 copy_runtime_files >> "$LOG_FILE" 2>&1
 cd "$SUPPORT_DIR"
 
+run_install_with_window() {
+  "$PYTHON_FOR_INSTALL" - <<'PY'
+import queue
+import subprocess
+import sys
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import scrolledtext
+
+root_dir = Path.cwd()
+log_file = Path.home() / "Library" / "Logs" / "SIC OPTO Downloader" / "app.log"
+q = queue.Queue()
+
+root = tk.Tk()
+root.title("SIC OPTO Downloader - Instalação")
+root.geometry("760x460")
+root.resizable(True, True)
+
+header = tk.Label(
+    root,
+    text="A preparar a aplicação. Isto pode demorar alguns minutos.",
+    font=("Helvetica", 13, "bold"),
+    anchor="w",
+    padx=14,
+    pady=10,
+)
+header.pack(fill="x")
+
+status = tk.StringVar(value="A iniciar instalação...")
+tk.Label(root, textvariable=status, anchor="w", padx=14).pack(fill="x")
+
+log = scrolledtext.ScrolledText(root, height=18, wrap="word")
+log.pack(fill="both", expand=True, padx=14, pady=(8, 12))
+log.configure(state="disabled")
+
+def append(text):
+    log.configure(state="normal")
+    log.insert("end", text)
+    log.see("end")
+    log.configure(state="disabled")
+
+def worker():
+    try:
+        proc = subprocess.Popen(
+            ["./install_macos.sh"],
+            cwd=root_dir,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        if proc.stdin:
+            proc.stdin.write("n\n")
+            proc.stdin.flush()
+            proc.stdin.close()
+        with log_file.open("a", encoding="utf-8", errors="replace") as fh:
+            for line in proc.stdout or []:
+                fh.write(line)
+                fh.flush()
+                q.put(("line", line))
+        code = proc.wait()
+        q.put(("done", code))
+    except Exception as exc:
+        q.put(("error", str(exc)))
+
+def poll():
+    try:
+        while True:
+            kind, value = q.get_nowait()
+            if kind == "line":
+                append(value)
+                lower = value.lower()
+                if "a instalar" in lower:
+                    status.set(value.strip())
+                elif "[ok]" in lower:
+                    status.set(value.strip())
+            elif kind == "done":
+                if value == 0:
+                    status.set("Instalação concluída. A abrir aplicação...")
+                    root.after(900, root.destroy)
+                else:
+                    status.set(f"Instalação falhou (código {value}).")
+                    append(f"\nInstalação falhou (código {value}).\n")
+            elif kind == "error":
+                status.set("Instalação falhou.")
+                append(f"\nErro: {value}\n")
+    except queue.Empty:
+        pass
+    if root.winfo_exists():
+        root.after(100, poll)
+
+threading.Thread(target=worker, daemon=True).start()
+root.after(100, poll)
+root.mainloop()
+PY
+}
+
 needs_install=0
 if [[ ! -x ".venv/bin/python" ]]; then
   needs_install=1
@@ -121,8 +220,30 @@ then
 fi
 
 if [[ "$needs_install" -eq 1 ]]; then
-  show_dialog "Primeira abertura: vou instalar as dependencias. Pode demorar alguns minutos."
-  if ! printf 'n\n' | ./install_macos.sh >> "$LOG_FILE" 2>&1; then
+  PYTHON_FOR_INSTALL=""
+  for candidate in \
+    /usr/local/bin/python3 \
+    /Library/Frameworks/Python.framework/Versions/Current/bin/python3 \
+    /opt/homebrew/bin/python3 \
+    /usr/bin/python3 \
+    python3 \
+    python
+  do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" - <<'PY' >/dev/null 2>&1
+import tkinter
+PY
+    then
+      PYTHON_FOR_INSTALL="$candidate"
+      break
+    fi
+  done
+
+  if [[ -n "$PYTHON_FOR_INSTALL" ]]; then
+    if ! run_install_with_window >> "$LOG_FILE" 2>&1; then
+      show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/SIC OPTO Downloader/app.log"
+      exit 1
+    fi
+  elif ! printf 'n\n' | ./install_macos.sh >> "$LOG_FILE" 2>&1; then
     show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/SIC OPTO Downloader/app.log"
     exit 1
   fi
