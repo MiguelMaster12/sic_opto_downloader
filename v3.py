@@ -226,7 +226,7 @@ TOOLS = {
 # ─── Helpers URL ───────────────────────────────────────────────────────────────
 
 def name_from_url(url):
-    """Extrai nome legível do URL: .../vitoria-t2-e177/uuid → 'vitoria-t2-e177'"""
+    """Extrai nome legível do URL: .../nome-do-episodio/uuid -> 'nome-do-episodio'"""
     parts = [p for p in url.rstrip("/").split("/") if p]
     uuid_pat = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-', re.I)
     # Pegar o último segmento que não seja um UUID
@@ -1323,26 +1323,87 @@ def validate_final_media(path, log_fn):
 
 # ─── Pipeline de um episódio ───────────────────────────────────────────────────
 
-def run_cmd(cmd, log_fn, cwd=None):
+def _terminate_process(proc):
+    if not proc or proc.poll() is not None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+def _compact_ytdlp_logger(log_fn, label):
+    state = {"bucket": -1}
+    important = (
+        "error", "warning", "failed", "unable", "destination",
+        "merging", "decrypt", "fixing", "already"
+    )
+
+    def _log(line):
+        stripped = line.strip()
+        if not stripped:
+            return
+        if "[download]" in stripped:
+            m = re.search(r"(\d+(?:\.\d+)?)%", stripped)
+            if m:
+                pct = float(m.group(1))
+                bucket = int(pct // 10) * 10
+                if bucket != state["bucket"] or pct >= 99.9:
+                    state["bucket"] = bucket
+                    log_fn(f"   {label}: {pct:.0f}%\n")
+                return
+            if "100%" not in stripped and "Destination:" not in stripped:
+                return
+        if any(token in stripped.lower() for token in important):
+            log_fn(line if line.endswith("\n") else line + "\n")
+
+    return _log
+
+def run_cmd(cmd, log_fn, cwd=None, cancel_event=None, line_filter=None):
     log_fn(f"▶ {' '.join(str(x) for x in cmd)}\n")
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, cwd=cwd)
     for line in proc.stdout:
-        log_fn(line)
+        if cancel_event and cancel_event.is_set():
+            _terminate_process(proc)
+            log_fn("⏹ Processo cancelado.\n")
+            return 130
+        if line_filter:
+            line_filter(line)
+        else:
+            log_fn(line)
     proc.wait()
+    if cancel_event and cancel_event.is_set():
+        return 130
     return proc.returncode
 
-def run_cmd_q(cmd, log_fn, cwd=None):
+def run_cmd_q(cmd, log_fn, cwd=None, cancel_event=None):
     log_fn(f"▶ {' '.join(str(x) for x in cmd)}\n")
-    r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, cwd=cwd)
-    if r.returncode != 0:
-        log_fn("\n".join(r.stdout.splitlines()[-15:]) + "\n")
-    return r.returncode
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, cwd=cwd)
+    out = []
+    while True:
+        if cancel_event and cancel_event.is_set():
+            _terminate_process(proc)
+            log_fn("⏹ Processo cancelado.\n")
+            return 130
+        line = proc.stdout.readline() if proc.stdout else ""
+        if line:
+            out.append(line)
+        elif proc.poll() is not None:
+            break
+        else:
+            time.sleep(0.1)
+    if proc.returncode != 0:
+        log_fn("".join(out[-15:]))
+    return proc.returncode
 
 def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
                     output_dir, output_name, chrome_exe, profile_dir, profile_name,
-                    log_fn, progress_fn, quality="best"):
+                    log_fn, progress_fn, quality="best", cancel_event=None):
     """
     Processa UM episódio. Devolve (True, path) ou (False, None).
     """
@@ -1356,6 +1417,8 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 
     try:
         # 1. Capturar MPD
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n"); return False, None
         step(1, "Capturar MPD e License (Chrome)")
         mpd = mpd_url.strip() if mpd_url and mpd_url.strip() else None
         lic = license_url.strip() if license_url and license_url.strip() else None
@@ -1368,6 +1431,8 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 
         # 2. Keys
         step(2, "Obter Chaves")
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n"); return False, None
         keys = []
         if keys_manual and keys_manual.strip():
             keys = [k.strip() for k in keys_manual.replace(",","\n").splitlines()
@@ -1383,6 +1448,8 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 
         # 3. Download
         step(3, "Download (yt-dlp)")
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n"); return False, None
         video_enc = os.path.join(tmp, "video_enc.mp4")
         audio_enc = os.path.join(tmp, "audio_enc.m4a")
         video_fmt = _resolve_video_format_id(mpd, quality, log_fn)
@@ -1394,19 +1461,25 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
                 TOOLS["yt-dlp"], "--allow-unplayable-formats",
                 "--concurrent-fragments", "32",
                 "-f", video_fmt, "-o", video_enc, mpd
-            ], log_fn, cwd=tmp)
+            ], log_fn, cwd=tmp, cancel_event=cancel_event,
+                line_filter=_compact_ytdlp_logger(log_fn, "vídeo"))
 
         def download_audio():
             results["audio"] = run_cmd([
                 TOOLS["yt-dlp"], "--allow-unplayable-formats",
                 "--concurrent-fragments", "32",
                 "-f", "bestaudio", "-o", audio_enc, mpd
-            ], log_fn, cwd=tmp)
+            ], log_fn, cwd=tmp, cancel_event=cancel_event,
+                line_filter=_compact_ytdlp_logger(log_fn, "áudio"))
 
         t_video = threading.Thread(target=download_video)
         t_audio = threading.Thread(target=download_audio)
         t_video.start(); t_audio.start()
         t_video.join();  t_audio.join()
+
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n")
+            return False, None
 
         if results["video"] != 0 or results["audio"] != 0:
             log_fn("❌ Download falhou.\n")
@@ -1427,6 +1500,8 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 
         # 4. Desencriptar
         step(4, "Desencriptação (mp4decrypt)")
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n"); return False, None
         mp4d = resolve_tool(TOOLS["mp4decrypt"])
         if not mp4d:
             log_fn("❌ mp4decrypt não encontrado.\n"); return False, None
@@ -1437,8 +1512,10 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
                 key_args += ["--key", f"{parts[0]}:{parts[1]}"]
         video_dec = os.path.join(tmp, "video_dec.mp4")
         audio_dec = os.path.join(tmp, "audio_dec.m4a")
-        rv = run_cmd([mp4d] + key_args + [video_enc, video_dec], log_fn)
-        ra = run_cmd([mp4d] + key_args + [audio_enc, audio_dec], log_fn)
+        rv = run_cmd([mp4d] + key_args + [video_enc, video_dec], log_fn,
+                     cancel_event=cancel_event)
+        ra = run_cmd([mp4d] + key_args + [audio_enc, audio_dec], log_fn,
+                     cancel_event=cancel_event)
         if rv != 0 or ra != 0:
             log_fn("❌ mp4decrypt falhou.\n"); return False, None
 
@@ -1455,6 +1532,8 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 
         # 5. Muxing
         step(5, "Muxing (ffmpeg)")
+        if cancel_event and cancel_event.is_set():
+            log_fn("⏹ Download cancelado.\n"); return False, None
         safe_name = re.sub(r'[^\w\-_. ]', '_', output_name or "SIC_OPTO")
         final_out = os.path.join(output_dir, f"{safe_name}.mp4")
 
@@ -1465,7 +1544,7 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
             final_out
         ]
 
-        ret = run_cmd_q(ffmpeg_cmd, log_fn)
+        ret = run_cmd_q(ffmpeg_cmd, log_fn, cancel_event=cancel_event)
         if ret != 0 or not os.path.exists(final_out):
             log_fn("❌ ffmpeg falhou.\n"); return False, None
         if not validate_final_media(final_out, log_fn):
@@ -1484,7 +1563,7 @@ def process_episode(page_url, mpd_url, license_url, pssh_manual, keys_manual,
 def download_and_decrypt(page_url, mpd_url, license_url, pssh_manual, keys_manual,
                          output_dir, output_name, chrome_exe, profile_dir, profile_name,
                          log_fn, progress_fn, done_fn,
-                         batch_episodes=None, quality="best"):
+                         batch_episodes=None, quality="best", cancel_event=None):
     """
     batch_episodes: None → episódio único
                     list  → lista de dicts {title, url, season, episode}
@@ -1495,6 +1574,9 @@ def download_and_decrypt(page_url, mpd_url, license_url, pssh_manual, keys_manua
             total = len(batch_episodes)
             ok_count = 0
             for i, ep in enumerate(batch_episodes, 1):
+                if cancel_event and cancel_event.is_set():
+                    log_fn("⏹ Série cancelada.\n")
+                    break
                 ep_name = re.sub(r'[^\w\-_. ]', '_',
                                  f"{ep['title']}_T{ep['season']:02d}E{ep['episode']:02d}")
                 log_fn(f"\n{'═'*54}\n🎬 Episódio {i}/{total}: {ep['title']}\n{'═'*54}\n")
@@ -1507,7 +1589,11 @@ def download_and_decrypt(page_url, mpd_url, license_url, pssh_manual, keys_manua
                     log_fn, lambda pct, lbl, _i=i, _t=total:
                         progress_fn((_i-1)/_t*100 + pct/_t, lbl),
                     quality=quality,
+                    cancel_event=cancel_event,
                 )
+                if cancel_event and cancel_event.is_set():
+                    log_fn("⏹ Série cancelada.\n")
+                    break
                 if success:
                     ok_count += 1
                     save_download(ep["url"], ep["title"], path or "")
@@ -1528,8 +1614,11 @@ def download_and_decrypt(page_url, mpd_url, license_url, pssh_manual, keys_manua
                 chrome_exe, profile_dir, profile_name,
                 log_fn, progress_fn,
                 quality=quality,
+                cancel_event=cancel_event,
             )
-            progress_fn(100, "Concluído!" if success else "Falhou")
+            was_cancelled = bool(cancel_event and cancel_event.is_set())
+            progress_fn(0 if was_cancelled else 100,
+                        "Cancelado" if was_cancelled else "Concluído!" if success else "Falhou")
             if success and page_url:
                 save_download(page_url, output_name or name_from_url(page_url), path or "")
             done_fn(success, path)
@@ -1663,6 +1752,7 @@ class App(tk.Tk):
         self.resizable(True, True)
         self._cfg = load_config()
         self._series_scrape_cancel = None
+        self._download_cancel = None
         self._placeholder_values = set()
         self._setup_styles()
         self.configure(bg=self._c["BG"])
@@ -1792,6 +1882,11 @@ class App(tk.Tk):
                                             command=self._cancel_series_scrape)
         self.btn_cancel_series.pack(side="right", padx=(4,0))
         self.btn_cancel_series.config(state="disabled")
+        self.btn_cancel_download = ttk.Button(bot, text="⏹  CANCELAR DOWNLOAD",
+                                              style="Sec.TButton",
+                                              command=self._cancel_download)
+        self.btn_cancel_download.pack(side="right", padx=(4,0))
+        self.btn_cancel_download.config(state="disabled")
         self.btn_start = ttk.Button(bot, text="▶  INICIAR DOWNLOAD",
                                     command=self._start)
         self.btn_start.pack(side="right", padx=(8,0))
@@ -1801,7 +1896,7 @@ class App(tk.Tk):
         self._lbl(p, "🌐  URL do episódio SIC OPTO  (ou URL de série para modo batch)")
         self.var_page = tk.StringVar()
         url_entry = self._entry(p, self.var_page,
-                                "https://opto.sic.pt/vod/vitoria-t2-e177/uuid...")
+                                "https://opto.sic.pt/vod/nome-do-episodio/uuid")
         # Auto-fill nome ao sair do campo URL
         url_entry.bind("<FocusOut>", self._autofill_name)
         url_entry.bind("<Return>",   self._autofill_name)
@@ -1820,7 +1915,7 @@ class App(tk.Tk):
         col1 = ttk.Frame(row); col1.pack(side="left", fill="x", expand=True, padx=(0,8))
         self._lbl(col1, "📝  Nome do ficheiro final (auto-preenchido pelo URL)")
         self.var_name = tk.StringVar()
-        self.name_entry = self._entry(col1, self.var_name, "ex: vitoria-t2-e177")
+        self.name_entry = self._entry(col1, self.var_name, "ex: nome-do-episodio")
 
         col2 = ttk.Frame(row); col2.pack(side="left", fill="x", expand=True)
         self._lbl(col2, "📁  Pasta de destino")
@@ -2014,8 +2109,8 @@ class App(tk.Tk):
         def clean_placeholder(v):
             v = self._clean_entry_value(v)
             placeholders = {
-                "https://opto.sic.pt/vod/vitoria-t2-e177/uuid...",
-                "ex: vitoria-t2-e177",
+                "https://opto.sic.pt/vod/nome-do-episodio/uuid",
+                "ex: nome-do-episodio",
                 "https://manifest.mpd",
                 "https://...manifest.mpd",
                 "https://.../license?...",
@@ -2042,6 +2137,23 @@ class App(tk.Tk):
         self.btn_start.config(state="normal")
         self.btn_series.config(state="normal")
         self.btn_cancel_series.config(state="disabled")
+        self.btn_cancel_download.config(state="disabled")
+        self._download_cancel = None
+
+    def _begin_download(self):
+        self._download_cancel = threading.Event()
+        self.btn_start.config(state="disabled")
+        self.btn_series.config(state="disabled")
+        self.btn_cancel_series.config(state="disabled")
+        self.btn_cancel_download.config(state="normal")
+        return self._download_cancel
+
+    def _cancel_download(self):
+        if self._download_cancel and not self._download_cancel.is_set():
+            self._download_cancel.set()
+            self.btn_cancel_download.config(state="disabled")
+            self._set_progress(0, "A cancelar download...")
+            self._log("⏹ Pedido de cancelamento enviado. A parar processos...\n")
 
     def _begin_series_scrape(self):
         self._series_scrape_cancel = threading.Event()
@@ -2089,14 +2201,16 @@ class App(tk.Tk):
                      "profile_name": args["profile_name"],
                      "output_dir": args["output_dir"]})
 
-        self._disable_buttons()
+        cancel_event = self._begin_download()
         self._clear_log()
         self._log(f"🚀 {datetime.now().strftime('%H:%M:%S')} — {output_name}\n")
 
         def done_fn(success, path=None):
             def _f():
                 self._enable_buttons()
-                if success:
+                if cancel_event.is_set():
+                    messagebox.showinfo("Cancelado", "⏹ Download cancelado.")
+                elif success:
                     messagebox.showinfo("Concluído", f"✅ Download concluído!\n{path}")
                 else:
                     messagebox.showerror("Erro", "Processo falhou. Consulta o Log.")
@@ -2107,7 +2221,8 @@ class App(tk.Tk):
             kwargs=dict(page_url=page_url, **args,
                         output_name=output_name,
                         log_fn=self._log, progress_fn=self._set_progress,
-                        done_fn=done_fn),
+                        done_fn=done_fn,
+                        cancel_event=cancel_event),
             daemon=True
         ).start()
 
@@ -2175,7 +2290,8 @@ class App(tk.Tk):
                                 output_name="",
                                 output_dir=output_dir,
                                 log_fn=self._log, progress_fn=self._set_progress,
-                                done_fn=done_fn, batch_episodes=selected),
+                                done_fn=done_fn, batch_episodes=selected,
+                                cancel_event=threading.Event()),
                     daemon=True
                 ).start()
 
