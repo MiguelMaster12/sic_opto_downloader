@@ -54,7 +54,7 @@ package_platform() {
   copy_common_files "$package_dir"
 
   for file in "$@"; do
-    cp "$file" "$package_dir/$file"
+    cp "$file" "$package_dir/$(basename "$file")"
   done
 
   case "$platform" in
@@ -77,17 +77,17 @@ package_platform() {
 mkdir -p "$DIST_DIR"
 
 package_platform "windows" \
-  "install_windows.bat" \
-  "install_windows.ps1" \
-  "run_windows.bat" \
-  "run_windows.ps1"
+  "platform/windows/install_windows.bat" \
+  "platform/windows/install_windows.ps1" \
+  "platform/windows/run_windows.bat" \
+  "platform/windows/run_windows.ps1"
 
 package_platform "macos" \
-  "install_macos.sh" \
-  "run_macos.sh"
+  "platform/macos/install_macos.sh" \
+  "platform/macos/run_macos.sh"
 
 package_platform "linux" \
-  "install_linux.sh" \
-  "run_linux.sh"
+  "platform/linux/install_linux.sh" \
+  "platform/linux/run_linux.sh"
 
 rm -rf "$STAGING_DIR"

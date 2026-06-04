@@ -46,8 +46,8 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR/config"
 cp README.md "$RESOURCES_DIR/"
 cp v3.py "$RESOURCES_DIR/"
 cp instalar_dependencias.py "$RESOURCES_DIR/"
-cp install_macos.sh "$RESOURCES_DIR/"
-cp run_macos.sh "$RESOURCES_DIR/"
+cp platform/macos/install_macos.sh "$RESOURCES_DIR/"
+cp platform/macos/run_macos.sh "$RESOURCES_DIR/"
 cp config/sic_opto_config.example.json "$RESOURCES_DIR/config/"
 
 if [[ -f "$ICON_SOURCE" ]]; then

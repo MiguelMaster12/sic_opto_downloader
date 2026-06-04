@@ -236,16 +236,14 @@ Exemplo:
 .
 ├── v3.py
 ├── instalar_dependencias.py
-├── install_windows.bat
-├── install_windows.ps1
-├── install_macos.sh
-├── install_linux.sh
-├── run_windows.bat
-├── run_windows.ps1
-├── run_macos.sh
-├── run_linux.sh
 ├── README.md
+├── assets/
 ├── config/
+├── platform/
+│   ├── windows/
+│   ├── macos/
+│   └── linux/
+├── scripts/
 ├── state/
 ├── secrets/
 ├── vendor/
