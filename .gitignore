@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+
+chrome-debug-profile/
+secrets/
+state/
+vendor/
+
+*.mp4
+*.m4a
+*.mkv
+*.webm
+*.part
+*.invalid.mp4

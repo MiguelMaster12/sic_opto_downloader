@@ -1,0 +1,7 @@
+{
+  "chrome_exe": "",
+  "profile_dir": "chrome-debug-profile",
+  "profile_name": "Default",
+  "output_dir": "downloads",
+  "quality": "best"
+}
