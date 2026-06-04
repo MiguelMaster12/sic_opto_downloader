@@ -3,7 +3,6 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python\&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![Status](https://img.shields.io/badge/Status-Active-success)
-![Release](https://img.shields.io/github/v/release/MiguelMaster12/sic_opto_downloader)
 
 Ferramenta experimental para testes pessoais com conteúdos SIC OPTO acessíveis pela própria conta do utilizador.
 
