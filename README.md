@@ -219,6 +219,60 @@ Clica em **SÉRIE**, seleciona os episódios pretendidos e confirma.
 - Cache: `state/sic_opto_cache.json`
 - Histórico: `state/sic_opto_downloads.json`
 
+---
+
+## 🔄 Atualizar
+
+Transfere a versão mais recente na página de [Releases](../../releases).
+
+**Executável / DMG / AppImage**
+
+- Windows: substitui o `.exe` antigo pelo novo.
+- macOS: abre o novo `.dmg` e copia a app novamente para `Applications`, substituindo a anterior.
+- Linux: substitui o `.AppImage` antigo pelo novo e garante que tem permissão de execução.
+
+**Pacote ZIP**
+
+1. Descarrega o ZIP mais recente para a tua plataforma.
+2. Extrai para uma nova pasta ou substitui os ficheiros antigos.
+3. Executa novamente o script de instalação da tua plataforma se houver erro de dependências.
+
+> Mantém a pasta `secrets/` e o teu `.wvd`. Sem o `.wvd`, os downloads protegidos não são concluídos.
+
+---
+
+## 🗑️ Desinstalar
+
+Fecha a aplicação antes de remover ficheiros.
+
+**Windows**
+
+Apaga a pasta onde extraíste o ZIP ou remove o `.exe` que descarregaste.
+
+**macOS**
+
+Remove a app instalada:
+
+```bash
+rm -rf "/Applications/SIC OPTO Downloader.app"
+```
+
+**Linux**
+
+Apaga a pasta onde extraíste o ZIP ou remove o `.AppImage` que descarregaste.
+
+**Limpeza opcional de dados locais**
+
+Se quiseres remover também configuração, cache, perfil Chrome dedicado, downloads e secrets, apaga as pastas locais do projeto/app:
+
+```bash
+rm -rf config state chrome-debug-profile downloads vendor secrets
+```
+
+> Atenção: apagar `secrets/` remove o teu `.wvd`, `private_key.pem` e `client_id.bin`.
+
+---
+
 ## 📦 Dependências
 
 O instalador prepara automaticamente:
