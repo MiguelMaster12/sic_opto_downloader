@@ -2027,6 +2027,15 @@ class App(tk.Tk):
         self.var_profile_name = tk.StringVar(value="Default")
         self._entry(p, self.var_profile_name, "Default")
 
+        info = tk.Frame(p, bg=c["PANEL"], pady=10, padx=12)
+        info.pack(fill="x", pady=(10,0))
+        tk.Label(info,
+                 text="Cria um perfil Chrome separado, faz login no SIC OPTO e aponta para essa pasta.\n"
+                      "A configuração é guardada ao clicar Guardar ou ao fechar.\n\n"
+                      "Fecha qualquer Chrome aberto na porta 9222 antes de iniciar.",
+                 bg=c["PANEL"], fg=c["MUTED"], font=("Segoe UI", 9),
+                 justify="left").pack(anchor="w")
+
         tk.Frame(p, bg=c["PANEL"], height=1).pack(fill="x", pady=14)
 
         ttk.Button(p, text="💾  Guardar configuração", command=self._save_cfg).pack(anchor="w")
@@ -2089,14 +2098,6 @@ class App(tk.Tk):
             p, text="Gerar .wvd", style="Sec.TButton", command=self._generate_wvd)
         self.btn_generate_wvd.pack(anchor="w", pady=(10,0))
 
-        info = tk.Frame(p, bg=c["PANEL"], pady=10, padx=12)
-        info.pack(fill="x", pady=(10,0))
-        tk.Label(info,
-                 text="Cria um perfil Chrome separado, faz login no SIC OPTO e aponta para essa pasta.\n"
-                      "A configuração é guardada ao clicar Guardar ou ao fechar.\n\n"
-                      "Fecha qualquer Chrome aberto na porta 9222 antes de iniciar.",
-                 bg=c["PANEL"], fg=c["MUTED"], font=("Segoe UI", 9),
-                 justify="left").pack(anchor="w")
         self._refresh_wvd_status()
 
     def _tab_log(self, p):
