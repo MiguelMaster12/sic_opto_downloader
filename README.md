@@ -239,8 +239,6 @@ Este projeto é mantido em tempo livre. Se te foi útil, podes apoiar aqui:
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-yellow?logo=buy-me-a-coffee)](https://www.buymeacoffee.com/miguelmaster12)
 
-> Troca `TEU_USERNAME` pelo teu username do Buy Me a Coffee.
-
 ## Contribuições
 
 Este é um projeto de testes. Melhorias são bem-vindas, especialmente em:
