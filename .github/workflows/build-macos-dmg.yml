@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       version:
@@ -45,9 +43,3 @@ jobs:
           name: sic-opto-downloader-macos-dmg
           path: release-dist/*.dmg
           if-no-files-found: error
-
-      - name: Upload DMG to GitHub Release
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release-dist/*.dmg
