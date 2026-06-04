@@ -88,6 +88,15 @@ Se descarregaste um executável, DMG ou AppImage, abre-o diretamente.
 
 Se descarregaste um ZIP, extrai o conteúdo para uma pasta à tua escolha.
 
+**macOS**
+
+Se instalaste pelo `.dmg` e o macOS bloquear a app por programador não verificado, executa:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/SIC OPTO Downloader.app"
+open "/Applications/SIC OPTO Downloader.app"
+```
+
 ### 3. Instalar Dependências via ZIP
 
 **Windows**
