@@ -46,6 +46,7 @@ LEGACY_CONFIG_FILE       = SCRIPT_DIR / "sic_opto_config.json"
 
 CACHE_FILE = STATE_DIR / "sic_opto_cache.json"
 LEGACY_CACHE_FILE = SCRIPT_DIR / "sic_opto_cache.json"
+CHROME_LAUNCH_LOG = STATE_DIR / "chrome_launch.log"
 
 def _read_json(primary_path, legacy_path=None):
     for path in (primary_path, legacy_path):
@@ -339,29 +340,33 @@ def get_series_episodes(series_url, log_fn, chrome_exe="", profile_dir="", profi
             chrome_cmd += [f"--user-data-dir={profile_path}"]
             if profile_name:
                 chrome_cmd += [f"--profile-directory={profile_name}"]
+        chrome_cmd += ["about:blank"]
         log_fn(f"🌐 A lançar Chrome (porta {DEBUG_PORT})...\n")
         try:
-            _chrome_proc = subprocess.Popen(chrome_cmd)
+            _chrome_proc = _start_chrome_debug(chrome_cmd)
         except FileNotFoundError:
             log_fn(f"❌ Chrome não encontrado: {chrome_exe}\n")
             return {}
-        for _ in range(25):
+        for _ in range(45):
             if cancelled():
                 log_fn("⏹ Scrape de série cancelado.\n")
                 return {}
             if _chrome_already_running():
                 log_fn("✅ Chrome ativo.\n")
                 break
+            if _chrome_proc.poll() is not None:
+                log_fn(f"❌ Chrome fechou ao arrancar (código {_chrome_proc.returncode}).\n")
+                _log_chrome_launch_failure(log_fn)
+                return {}
             time.sleep(1)
         else:
             log_fn("❌ Chrome não respondeu.\n")
+            _log_chrome_launch_failure(log_fn)
             _kill_chrome()
             return {}
 
     try:
-        opts = Options()
-        opts.debugger_address = f"127.0.0.1:{DEBUG_PORT}"
-        driver = webdriver.Chrome(options=opts)
+        driver = _attach_selenium_debugger(series_url, req_lib, log_fn)
     except Exception as e:
         log_fn(f"❌ Selenium: {e}\n")
         return {}
@@ -369,8 +374,6 @@ def get_series_episodes(series_url, log_fn, chrome_exe="", profile_dir="", profi
     episodes_by_season = {}
 
     try:
-        log_fn(f"🔗 A navegar: {series_url}\n")
-        driver.get(series_url)
         if cancelled():
             log_fn("⏹ Scrape de série cancelado.\n")
             return {}
@@ -933,6 +936,76 @@ def _chrome_already_running():
     except Exception:
         return False
 
+def _start_chrome_debug(chrome_cmd):
+    STATE_DIR.mkdir(exist_ok=True)
+    log_file = CHROME_LAUNCH_LOG.open("w", encoding="utf-8", errors="replace")
+    return subprocess.Popen(chrome_cmd, stdout=log_file, stderr=subprocess.STDOUT)
+
+def _log_chrome_launch_failure(log_fn):
+    if not CHROME_LAUNCH_LOG.exists():
+        return
+    try:
+        lines = CHROME_LAUNCH_LOG.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return
+    if not lines:
+        return
+    log_fn("📄 Log do Chrome:\n")
+    for line in lines[-12:]:
+        log_fn(f"   {line}\n")
+
+def _get_or_create_debug_page(req_lib, url="about:blank"):
+    def _pages():
+        tabs = req_lib.get(f"http://127.0.0.1:{DEBUG_PORT}/json", timeout=3).json()
+        return [
+            t for t in tabs
+            if t.get("type") == "page" and t.get("webSocketDebuggerUrl")
+        ]
+
+    pages = _pages()
+    if pages:
+        return pages[-1]
+
+    encoded_url = urllib.parse.quote(url, safe="")
+    try:
+        req_lib.put(f"http://127.0.0.1:{DEBUG_PORT}/json/new?{encoded_url}", timeout=3)
+    except Exception:
+        req_lib.get(f"http://127.0.0.1:{DEBUG_PORT}/json/new?{encoded_url}", timeout=3)
+    time.sleep(1)
+
+    pages = _pages()
+    if not pages:
+        raise RuntimeError("nenhuma aba page disponível no Chrome debug")
+    return pages[-1]
+
+def _attach_selenium_debugger(page_url, req_lib, log_fn):
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+
+    _get_or_create_debug_page(req_lib)
+    opts = Options()
+    opts.debugger_address = f"127.0.0.1:{DEBUG_PORT}"
+    driver = webdriver.Chrome(options=opts)
+
+    try:
+        handles = driver.window_handles
+        if handles:
+            driver.switch_to.window(handles[-1])
+    except Exception:
+        try:
+            driver.quit()
+        except Exception:
+            pass
+        _get_or_create_debug_page(req_lib)
+        driver = webdriver.Chrome(options=opts)
+        handles = driver.window_handles
+        if handles:
+            driver.switch_to.window(handles[-1])
+
+    log_fn(f"🔗 A navegar: {page_url}\n")
+    driver.get(page_url)
+    return driver
+
 # ─── Captura CDP ───────────────────────────────────────────────────────────────
 
 def capture_mpd_and_license(page_url, chrome_exe, profile_dir, profile_name,
@@ -968,28 +1041,33 @@ def capture_mpd_and_license(page_url, chrome_exe, profile_dir, profile_name,
             chrome_cmd += [f"--user-data-dir={profile_path}"]
             if profile_name:
                 chrome_cmd += [f"--profile-directory={profile_name}"]
+        chrome_cmd += ["about:blank"]
 
         log_fn(f"🌐 A lançar Chrome (porta {DEBUG_PORT})...\n")
         try:
-            _chrome_proc = subprocess.Popen(chrome_cmd)
+            _chrome_proc = _start_chrome_debug(chrome_cmd)
         except FileNotFoundError:
             log_fn(f"❌ Chrome não encontrado: {chrome_exe}\n")
             return None, None
 
-        for i in range(25):
+        for i in range(45):
             if _chrome_already_running():
                 log_fn("✅ Chrome ativo.\n")
                 break
+            if _chrome_proc.poll() is not None:
+                log_fn(f"❌ Chrome fechou ao arrancar (código {_chrome_proc.returncode}).\n")
+                _log_chrome_launch_failure(log_fn)
+                return None, None
             time.sleep(1)
         else:
             log_fn("❌ Chrome não respondeu.\n")
+            _log_chrome_launch_failure(log_fn)
             _kill_chrome()
             return None, None
 
     # Obter tab e abrir WebSocket ANTES de navegar
     try:
-        tabs   = req_lib.get(f"http://127.0.0.1:{DEBUG_PORT}/json", timeout=3).json()
-        tab    = next((t for t in tabs if t.get("type") == "page"), None)
+        tab    = _get_or_create_debug_page(req_lib)
         ws_url = tab["webSocketDebuggerUrl"]
     except Exception as e:
         log_fn(f"❌ Erro tabs CDP: {e}\n")
@@ -1013,13 +1091,7 @@ def capture_mpd_and_license(page_url, chrome_exe, profile_dir, profile_name,
 
     # Navegar
     try:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        opts = Options()
-        opts.debugger_address = f"127.0.0.1:{DEBUG_PORT}"
-        driver = webdriver.Chrome(options=opts)
-        log_fn(f"🔗 A navegar: {page_url}\n")
-        driver.get(page_url)
+        driver = _attach_selenium_debugger(page_url, req_lib, log_fn)
         time.sleep(4)
     except Exception as e:
         log_fn(f"⚠ Selenium: {e}\n")
