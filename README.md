@@ -410,5 +410,5 @@ Se te foi útil, considera apoiar:
 ---
 
 <div align="center">
-<sub>Feito com atenção ao detalhe · Uso pessoal · Sem afiliação com a SIC ou OPTO</sub>
+<sub>Uso pessoal · Sem afiliação com a SIC ou OPTO</sub>
 </div>

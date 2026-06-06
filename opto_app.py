@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Opto Downloader
+Opto Downloader by MiguelMaster12
 ===============
 
 Interface Qt para o fluxo API-only:
