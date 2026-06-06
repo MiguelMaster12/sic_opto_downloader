@@ -5,7 +5,7 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/miguelmaster12)
 
-Ferramenta local para analisar, reproduzir temporariamente e descarregar episódios OPTO usando APIs HTTP. Não usa Selenium, Playwright nem Chrome.
+Ferramenta local para analisar, reproduzir temporariamente e descarregar episódios OPTO usando APIs HTTP.
 
 Uso pessoal apenas. Requer acesso legítimo ao conteúdo e um ficheiro `.wvd` próprio para obter keys Widevine.
 

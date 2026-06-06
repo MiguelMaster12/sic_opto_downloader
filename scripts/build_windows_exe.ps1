@@ -11,7 +11,7 @@ if ($Version) {
 $exeName = "$name-windows"
 
 # ---------------------------------------------------------------------------
-# 1. Dependências Python
+# 1. Dependências Python 
 # ---------------------------------------------------------------------------
 Write-Host ">> Instalar dependências Python..."
 python -m pip install --upgrade pip
