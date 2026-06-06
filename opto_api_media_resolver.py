@@ -99,6 +99,7 @@ def log(msg):
 
 PROGRESS_CALLBACK = None
 CANCEL_CALLBACK = None
+_THREAD_CONTEXT = threading.local()
 
 
 def set_progress_callback(callback):
@@ -111,19 +112,37 @@ def set_cancel_callback(callback):
     CANCEL_CALLBACK = callback
 
 
+def set_thread_progress_callback(callback):
+    _THREAD_CONTEXT.progress_callback = callback
+
+
+def set_thread_cancel_callback(callback):
+    _THREAD_CONTEXT.cancel_callback = callback
+
+
+def get_thread_progress_callback():
+    return getattr(_THREAD_CONTEXT, "progress_callback", None)
+
+
+def get_thread_cancel_callback():
+    return getattr(_THREAD_CONTEXT, "cancel_callback", None)
+
+
 def should_cancel():
-    if not CANCEL_CALLBACK:
+    callback = get_thread_cancel_callback() or CANCEL_CALLBACK
+    if not callback:
         return False
     try:
-        return bool(CANCEL_CALLBACK())
+        return bool(callback())
     except Exception:
         return False
 
 
 def emit_progress(event, data):
-    if PROGRESS_CALLBACK:
+    callback = get_thread_progress_callback() or PROGRESS_CALLBACK
+    if callback:
         try:
-            PROGRESS_CALLBACK(event, data)
+            callback(event, data)
         except Exception:
             pass
 
@@ -568,30 +587,44 @@ def download_decrypt_mux(mpd_url, keys, output_dir, output_name, quality="best")
             raise RuntimeError("Download cancelado.")
         video_fmt = resolve_video_format_id(mpd_url, quality)
         results = {"video": None, "audio": None}
+        progress_callback = get_thread_progress_callback()
+        cancel_callback = get_thread_cancel_callback()
 
         def download_video():
-            results["video"] = run_cmd(
-                [
-                    TOOLS["yt-dlp"], "--allow-unplayable-formats",
-                    "--newline",
-                    "--concurrent-fragments", "32",
-                    "-f", video_fmt, "-o", str(video_enc), mpd_url,
-                ],
-                cwd=str(tmp_dir),
-                line_filter=compact_ytdlp_logger("vídeo"),
-            )
+            set_thread_progress_callback(progress_callback)
+            set_thread_cancel_callback(cancel_callback)
+            try:
+                results["video"] = run_cmd(
+                    [
+                        TOOLS["yt-dlp"], "--allow-unplayable-formats",
+                        "--newline",
+                        "--concurrent-fragments", "32",
+                        "-f", video_fmt, "-o", str(video_enc), mpd_url,
+                    ],
+                    cwd=str(tmp_dir),
+                    line_filter=compact_ytdlp_logger("vídeo"),
+                )
+            finally:
+                set_thread_progress_callback(None)
+                set_thread_cancel_callback(None)
 
         def download_audio():
-            results["audio"] = run_cmd(
-                [
-                    TOOLS["yt-dlp"], "--allow-unplayable-formats",
-                    "--newline",
-                    "--concurrent-fragments", "32",
-                    "-f", "bestaudio", "-o", str(audio_enc), mpd_url,
-                ],
-                cwd=str(tmp_dir),
-                line_filter=compact_ytdlp_logger("áudio"),
-            )
+            set_thread_progress_callback(progress_callback)
+            set_thread_cancel_callback(cancel_callback)
+            try:
+                results["audio"] = run_cmd(
+                    [
+                        TOOLS["yt-dlp"], "--allow-unplayable-formats",
+                        "--newline",
+                        "--concurrent-fragments", "32",
+                        "-f", "bestaudio", "-o", str(audio_enc), mpd_url,
+                    ],
+                    cwd=str(tmp_dir),
+                    line_filter=compact_ytdlp_logger("áudio"),
+                )
+            finally:
+                set_thread_progress_callback(None)
+                set_thread_cancel_callback(None)
 
         t_video = threading.Thread(target=download_video)
         t_audio = threading.Thread(target=download_audio)
@@ -634,8 +667,7 @@ def download_decrypt_mux(mpd_url, keys, output_dir, output_name, quality="best")
 
         if should_cancel():
             raise RuntimeError("Download cancelado.")
-        safe_name = re.sub(r"[^\w\-_. ]", "_", output_name or "SIC_OPTO")
-        final_out = output_dir / f"{safe_name}.mp4"
+        final_out = final_output_path(output_dir, output_name)
         emit_progress("stage", {"status": "A juntar vídeo e áudio", "percent": 90})
         ffmpeg_cmd = [
             TOOLS["ffmpeg"], "-hide_banner", "-loglevel", "warning", "-y",
@@ -721,6 +753,14 @@ def default_output_name(data: dict) -> str:
     if season and episode:
         suffix = f"_T{int(season):02d}E{int(episode):02d}"
     return f"{title}{suffix}"
+
+
+def safe_output_name(output_name: str) -> str:
+    return re.sub(r"[^\w\-_. ]", "_", output_name or "SIC_OPTO")
+
+
+def final_output_path(output_dir, output_name: str) -> Path:
+    return Path(output_dir).expanduser() / f"{safe_output_name(output_name)}.mp4"
 
 
 def parse_manual_keys(raw: str) -> list[str]:

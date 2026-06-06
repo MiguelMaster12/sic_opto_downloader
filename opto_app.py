@@ -11,8 +11,11 @@ Interface Qt para o fluxo API-only:
 
 import os
 import json
+import queue
+import re
 import subprocess
 import sys
+import threading
 import time
 import shutil
 import tempfile
@@ -38,6 +41,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSlider,
+    QSpinBox,
     QStackedWidget,
     QTextEdit,
     QTreeWidget,
@@ -180,6 +184,7 @@ I18N = {
         "wvd_output_fixed": "Saída fixa:",
         "choose_file": " ... ",
         "queue": "Fila ativa",
+        "workers": "Workers simultâneos",
         "history": "Histórico",
         "pause": "Pausar",
         "resume": "Retomar",
@@ -189,6 +194,8 @@ I18N = {
         "pending": "Em espera",
         "paused": "Pausado",
         "cancelled": "Cancelado",
+        "failed": "Falhado",
+        "skipped": "Ignorado",
         "completed": "Concluído",
         "open_folder": "Abrir pasta",
         "open_downloads_folder": "Abrir pasta de downloads",
@@ -258,6 +265,7 @@ I18N = {
         "wvd_output_fixed": "Fixed output:",
         "choose_file": " ... ",
         "queue": "Active queue",
+        "workers": "Concurrent workers",
         "history": "History",
         "pause": "Pause",
         "resume": "Resume",
@@ -267,6 +275,8 @@ I18N = {
         "pending": "Queued",
         "paused": "Paused",
         "cancelled": "Cancelled",
+        "failed": "Failed",
+        "skipped": "Skipped",
         "completed": "Completed",
         "open_folder": "Open folder",
         "open_downloads_folder": "Open downloads folder",
@@ -278,6 +288,12 @@ I18N = {
 
 def text_for(lang, key):
     return I18N.get(lang, I18N["pt"]).get(key, I18N["pt"].get(key, key))
+
+
+def safe_folder_name(value):
+    text = re.sub(r"[^\w\-_. ]", "_", value or "SIC_OPTO")
+    text = re.sub(r"\s+", " ", text).strip(" .")
+    return text or "SIC_OPTO"
 
 P = {
     "bg": "#F6F4EF",
@@ -861,6 +877,18 @@ class DownloadRow(QFrame):
         self.meta.setText("")
         self.btn_cancel.hide()
 
+    def mark_failed(self, message):
+        self.update_state(text_for(self.lang, "failed"), self.progress.value())
+        self.meta.setText(message[:120] if message else "")
+        self.btn_cancel.hide()
+
+    def mark_skipped(self, path):
+        self.path = path
+        self.update_state(text_for(self.lang, "skipped"), 100)
+        self.meta.setText("")
+        self.btn_open.show()
+        self.btn_cancel.hide()
+
 
 class DownloadGroup(QFrame):
     def __init__(self, label):
@@ -981,29 +1009,47 @@ class DownloadThread(QThread):
     progress_signal = Signal(int, str, float, str, str)
     row_done = Signal(int, str)
     row_cancelled = Signal(int)
+    row_failed = Signal(int, str)
+    row_skipped = Signal(int, str)
     error = Signal(str)
 
-    def __init__(self, episodes, output_dir, quality):
+    def __init__(self, episodes, output_dir, quality, worker_count=2):
         super().__init__()
-        self.episodes = episodes
+        self.episodes = list(episodes)
         self.output_dir = output_dir
         self.quality = quality
+        self.worker_count = max(1, min(int(worker_count or 1), 6))
+        self.max_attempts = 6
         self.cancel_requested = False
         self.paused = False
-        self.current_index = -1
+        self._pause_event = threading.Event()
+        self._pause_event.set()
+        self._ready_work = None
         self.cancelled_rows = set()
+        self._cancel_lock = threading.Lock()
 
     def cancel(self):
         self.cancel_requested = True
+        self._pause_event.set()
+        if self._ready_work is not None:
+            for _ in range(self.worker_count):
+                self._ready_work.put(None)
 
     def pause(self):
         self.paused = True
+        self._pause_event.clear()
 
     def resume(self):
         self.paused = False
+        self._pause_event.set()
 
     def cancel_row(self, row_index):
-        self.cancelled_rows.add(row_index)
+        with self._cancel_lock:
+            self.cancelled_rows.add(row_index)
+
+    def _is_row_cancelled(self, row_index):
+        with self._cancel_lock:
+            return row_index in self.cancelled_rows
 
     def _keys_for(self, data):
         wvds = media.find_wvd_files()
@@ -1016,87 +1062,224 @@ class DownloadThread(QThread):
 
     def _wait_if_paused(self):
         while self.paused and not self.cancel_requested:
-            time.sleep(0.2)
+            self._pause_event.wait(0.2)
+
+    def _retry_wait(self, attempt):
+        end_at = time.time() + min(0.5 * attempt, 2.0)
+        while not self.cancel_requested and time.time() < end_at:
+            self._pause_event.wait(0.1)
+
+    def _episode_output_dir(self, ep):
+        return ep.get("output_dir") or self.output_dir
+
+    def _existing_output_path(self, ep, output_name):
+        path = media.final_output_path(self._episode_output_dir(ep), output_name)
+        return path if path.exists() and path.is_file() else None
 
     def run(self):
         previous = media.log
         previous_progress = media.PROGRESS_CALLBACK
         previous_cancel = media.CANCEL_CALLBACK
         media.log = lambda msg: self.log_signal.emit(str(msg).strip())
-        media.set_cancel_callback(
-            lambda: self.cancel_requested or self.current_index in self.cancelled_rows
-        )
         outputs = []
-        try:
-            while self.episodes:
+        outputs_lock = threading.Lock()
+        prepare_work = queue.Queue()
+        ready_work = queue.Queue()
+        self._ready_work = ready_work
+        for ep in self.episodes:
+            prepare_work.put(ep)
+
+        def prepare_episode(ep):
+            label = ep.get("label") or ep.get("url") or ep.get("episode") or "episódio"
+            row_index = ep.get("_row_index", 0)
+            if self._is_row_cancelled(row_index):
+                self.row_cancelled.emit(row_index)
+                return None
+            initial_output_name = ep.get("output_name")
+            if initial_output_name:
+                existing = self._existing_output_path(ep, initial_output_name)
+                if existing:
+                    self.progress_signal.emit(row_index, "Já existe, ignorado", 100, "", "")
+                    self.row_skipped.emit(row_index, str(existing))
+                    return None
+            last_error = None
+            for attempt in range(1, self.max_attempts + 1):
                 if self.cancel_requested:
-                    break
-                self._wait_if_paused()
-                if self.cancel_requested:
-                    break
-                ep = self.episodes.pop(0)
-                label = ep.get("label") or ep.get("url") or ep.get("episode") or "episódio"
-                row_index = ep.get("_row_index", 0)
-                self.current_index = row_index
-                if row_index in self.cancelled_rows:
+                    return None
+                if self._is_row_cancelled(row_index):
                     self.row_cancelled.emit(row_index)
-                    continue
-                stream_progress = {"vídeo": 0.0, "áudio": 0.0}
-
-                def progress_callback(event, data, row_index=row_index, stream_progress=stream_progress):
-                    if event == "stage":
-                        self.progress_signal.emit(
-                            row_index,
-                            data.get("status", "A processar"),
-                            float(data.get("percent") or 0),
-                            "",
-                            "",
-                        )
-                        return
-                    if event != "download":
-                        return
-                    stream = data.get("stream", "")
-                    pct = float(data.get("percent") or 0)
-                    if stream in stream_progress:
-                        stream_progress[stream] = pct
-                    combined = 5 + (sum(stream_progress.values()) / len(stream_progress)) * 0.65
-                    self.progress_signal.emit(
-                        row_index,
-                        f"Download {stream}".strip(),
-                        combined,
-                        data.get("speed", ""),
-                        data.get("eta", ""),
-                    )
-
+                    return None
                 try:
-                    self.log_signal.emit(f"A preparar {label}")
-                    self.progress_signal.emit(row_index, "A resolver MPD/license", 0, "", "")
+                    self.log_signal.emit(f"A preparar keys em background: {label} (tentativa {attempt}/{self.max_attempts})")
+                    self.progress_signal.emit(row_index, f"A resolver MPD/license ({attempt}/{self.max_attempts})", 0, "", "")
                     data = ep.get("resolved") or media.resolve_episode_media(ep["url"])
-                    if self.cancel_requested or row_index in self.cancelled_rows:
+                    if self.cancel_requested or self._is_row_cancelled(row_index):
                         self.row_cancelled.emit(row_index)
-                        continue
-                    self.progress_signal.emit(row_index, "A obter keys", 3, "", "")
+                        return None
+                    self.progress_signal.emit(row_index, f"A obter keys ({attempt}/{self.max_attempts})", 3, "", "")
                     keys = self._keys_for(data)
                     output_name = ep.get("output_name") or media.default_output_name(data)
-                    media.set_progress_callback(progress_callback)
-                    path = media.download_decrypt_mux(
-                        data["mpd_url"],
-                        keys,
-                        self.output_dir,
-                        output_name,
-                        self.quality,
+                    existing = self._existing_output_path(ep, output_name)
+                    if existing:
+                        self.progress_signal.emit(row_index, "Já existe, ignorado", 100, "", "")
+                        self.row_skipped.emit(row_index, str(existing))
+                        return None
+                    self.progress_signal.emit(row_index, "Pronto para download", 5, "", "")
+                    return ep, data, keys, output_name
+                except Exception as exc:
+                    last_error = exc
+                    self.log_signal.emit(f"Falhou preparação de {label} ({attempt}/{self.max_attempts}): {exc}")
+                    if attempt < self.max_attempts:
+                        self._retry_wait(attempt)
+            self.row_failed.emit(row_index, str(last_error or "Falha ao preparar episódio."))
+            return None
+
+        def process_download(prepared):
+            ep, data, keys, output_name = prepared
+            label = ep.get("label") or ep.get("url") or ep.get("episode") or "episódio"
+            row_index = ep.get("_row_index", 0)
+            if self._is_row_cancelled(row_index):
+                self.row_cancelled.emit(row_index)
+                return
+
+            stream_progress = {"vídeo": 0.0, "áudio": 0.0}
+
+            def progress_callback(event, data, row_index=row_index, stream_progress=stream_progress):
+                if event == "stage":
+                    self.progress_signal.emit(
+                        row_index,
+                        data.get("status", "A processar"),
+                        float(data.get("percent") or 0),
+                        "",
+                        "",
                     )
-                    if row_index in self.cancelled_rows:
+                    return
+                if event != "download":
+                    return
+                stream = data.get("stream", "")
+                pct = float(data.get("percent") or 0)
+                if stream in stream_progress:
+                    stream_progress[stream] = pct
+                combined = 5 + (sum(stream_progress.values()) / len(stream_progress)) * 0.65
+                self.progress_signal.emit(
+                    row_index,
+                    f"Download {stream}".strip(),
+                    combined,
+                    data.get("speed", ""),
+                    data.get("eta", ""),
+                )
+
+            media.set_thread_progress_callback(progress_callback)
+            media.set_thread_cancel_callback(lambda row_index=row_index: self.cancel_requested or self._is_row_cancelled(row_index))
+            try:
+                last_error = None
+                for attempt in range(1, self.max_attempts + 1):
+                    if self.cancel_requested:
+                        return
+                    if self._is_row_cancelled(row_index):
                         self.row_cancelled.emit(row_index)
-                        continue
-                    self.progress_signal.emit(row_index, "Concluído", 100, "", "")
-                    self.row_done.emit(row_index, path)
-                    outputs.append(path)
-                except Exception:
-                    if row_index in self.cancelled_rows and not self.cancel_requested:
-                        self.row_cancelled.emit(row_index)
-                        continue
-                    raise
+                        return
+                    try:
+                        self.log_signal.emit(f"A descarregar {label} (tentativa {attempt}/{self.max_attempts})")
+                        path = media.download_decrypt_mux(
+                            data["mpd_url"],
+                            keys,
+                            self._episode_output_dir(ep),
+                            output_name,
+                            self.quality,
+                        )
+                        if self._is_row_cancelled(row_index):
+                            self.row_cancelled.emit(row_index)
+                            return
+                        self.progress_signal.emit(row_index, "Concluído", 100, "", "")
+                        self.row_done.emit(row_index, path)
+                        with outputs_lock:
+                            outputs.append(path)
+                        return
+                    except Exception as exc:
+                        last_error = exc
+                        if self._is_row_cancelled(row_index) and not self.cancel_requested:
+                            self.row_cancelled.emit(row_index)
+                            return
+                        self.log_signal.emit(f"Falhou download de {label} ({attempt}/{self.max_attempts}): {exc}")
+                        if attempt < self.max_attempts:
+                            self.progress_signal.emit(row_index, f"A tentar novamente ({attempt + 1}/{self.max_attempts})", 5, "", "")
+                            self._retry_wait(attempt)
+                self.row_failed.emit(row_index, str(last_error or "Falha no download."))
+            except Exception:
+                if self._is_row_cancelled(row_index) and not self.cancel_requested:
+                    self.row_cancelled.emit(row_index)
+                    return
+                raise
+            finally:
+                media.set_thread_progress_callback(None)
+                media.set_thread_cancel_callback(None)
+
+        def prepare_worker():
+            while not self.cancel_requested:
+                self._wait_if_paused()
+                if self.cancel_requested:
+                    return
+                try:
+                    ep = prepare_work.get_nowait()
+                except queue.Empty:
+                    return
+                try:
+                    prepared = prepare_episode(ep)
+                    if prepared is not None:
+                        ready_work.put(prepared)
+                except Exception as exc:
+                    row_index = ep.get("_row_index", 0)
+                    self.row_failed.emit(row_index, str(exc))
+                finally:
+                    prepare_work.task_done()
+
+        def download_worker():
+            while True:
+                self._wait_if_paused()
+                if self.cancel_requested:
+                    return
+                try:
+                    prepared = ready_work.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                try:
+                    if prepared is None:
+                        return
+                    process_download(prepared)
+                except Exception as exc:
+                    ep = prepared[0] if prepared else {}
+                    row_index = ep.get("_row_index", 0)
+                    self.row_failed.emit(row_index, str(exc))
+                finally:
+                    ready_work.task_done()
+
+        try:
+            count = min(self.worker_count, len(self.episodes))
+            prefetch_count = min(max(1, count), 2)
+            self.log_signal.emit(f"Fila iniciada: {len(self.episodes)} episódio(s)")
+            self.log_signal.emit(f"Workers ativos: {count} · prefetch keys: {prefetch_count}")
+
+            preparers = []
+            for _ in range(prefetch_count):
+                thread = threading.Thread(target=prepare_worker, daemon=True)
+                preparers.append(thread)
+                thread.start()
+
+            downloaders = []
+            for _ in range(count):
+                thread = threading.Thread(target=download_worker, daemon=True)
+                downloaders.append(thread)
+                thread.start()
+
+            for thread in preparers:
+                thread.join()
+
+            for _ in downloaders:
+                ready_work.put(None)
+            for thread in downloaders:
+                thread.join()
+
             self.done.emit(outputs)
         except Exception as exc:
             if self.cancel_requested:
@@ -1107,7 +1290,7 @@ class DownloadThread(QThread):
             media.log = previous
             media.set_progress_callback(previous_progress)
             media.set_cancel_callback(previous_cancel)
-            self.current_index = -1
+            self._ready_work = None
 
 
 class PlayerPrepareThread(QThread):
@@ -1975,6 +2158,20 @@ class App(QMainWindow):
 
         gv.addSpacing(6)
 
+        workers_lbl = QLabel(self.t("workers"))
+        workers_lbl.setStyleSheet("background: transparent; border: none;")
+        gv.addWidget(workers_lbl)
+
+        self.pref_download_workers = QSpinBox()
+        self.pref_download_workers.setRange(1, 6)
+        self.pref_download_workers.setValue(int(self.config.get("download_workers", 2) or 2))
+        self.pref_download_workers.setMinimumHeight(44)
+        self.pref_download_workers.setFixedWidth(96)
+        self.pref_download_workers.setToolTip(self.t("workers"))
+        gv.addWidget(self.pref_download_workers)
+
+        gv.addSpacing(6)
+
         lang_lbl = QLabel(self.t("language"))
         lang_lbl.setStyleSheet("background: transparent; border: none;")
         gv.addWidget(lang_lbl)
@@ -2205,6 +2402,7 @@ class App(QMainWindow):
         data = {
             "output_dir": self.pref_output_dir.text().strip() or str(DEFAULT_OUTPUT_DIR),
             "quality": self.pref_quality.value(),
+            "download_workers": self.pref_download_workers.value(),
             "language": self.pref_language.value(),
         }
         save_config(data)
@@ -2376,6 +2574,22 @@ class App(QMainWindow):
         if 0 <= index < len(self.download_rows):
             self.download_rows[index].mark_cancelled()
             self._hide_download_row(index)
+
+    def _download_row_failed(self, index, message):
+        if 0 <= index < len(self.download_rows):
+            self.download_rows[index].mark_failed(message)
+        if not hasattr(self, "download_failed_rows"):
+            self.download_failed_rows = set()
+        self.download_failed_rows.add(index)
+        self._log(f"Falhou episódio {index + 1}: {message}")
+
+    def _download_row_skipped(self, index, path):
+        if 0 <= index < len(self.download_rows):
+            self.download_rows[index].mark_skipped(path)
+        if not hasattr(self, "download_skipped_rows"):
+            self.download_skipped_rows = set()
+        self.download_skipped_rows.add(index)
+        self._log(f"Ignorado episódio {index + 1}: já existe em {path}")
 
     def _toggle_pause_downloads(self):
         thread = self.current_download_thread
@@ -2555,11 +2769,13 @@ class App(QMainWindow):
                             or self.series_input.text().strip()
                             or self.t("series")
                         )
+                        season_folder = f"{safe_folder_name(series_name)}_S{season:02d}" if season else safe_folder_name(series_name)
                         selected.append({
                             "url": ep["url"],
                             "label": child.text(0),
                             "output_name": f"{ep.get('title', 'SIC_OPTO')}_T{int(ep.get('season') or 0):02d}E{int(ep.get('episode') or 0):02d}",
                             "group": f"{series_name} > {season_name}" if season_name else series_name,
+                            "output_dir": str(Path(self.output_series.text() or DEFAULT_OUTPUT_DIR) / season_folder),
                         })
         return selected
 
@@ -2822,15 +3038,25 @@ class App(QMainWindow):
     def _start_download(self, episodes, output_dir, quality):
         self._busy("Download em curso")
         self.downloads_cancelled_by_user = False
+        self.download_failed_rows = set()
+        self.download_skipped_rows = set()
         self._prepare_download_rows(episodes)
         self._nav(2)
-        thread = DownloadThread(episodes, output_dir or str(DEFAULT_OUTPUT_DIR), quality)
+        worker_count = max(1, min(int(self.config.get("download_workers", 2) or 2), 6))
+        thread = DownloadThread(episodes, output_dir or str(DEFAULT_OUTPUT_DIR), quality, worker_count)
         self.current_download_thread = thread
         self._set_download_actions_visible(True)
+        self.download_status_label.setText(
+            f"{len(episodes)} item(s) na fila · {worker_count} worker(s)"
+            if self.lang == "pt"
+            else f"{len(episodes)} item(s) queued · {worker_count} worker(s)"
+        )
         thread.done.connect(self._download_done)
         thread.progress_signal.connect(self._on_download_progress)
         thread.row_done.connect(self._download_row_done)
         thread.row_cancelled.connect(self._download_row_cancelled)
+        thread.row_failed.connect(self._download_row_failed)
+        thread.row_skipped.connect(self._download_row_skipped)
         self._run_thread(thread)
 
     def _download_done(self, outputs):
@@ -2843,9 +3069,24 @@ class App(QMainWindow):
             self.download_status_label.setText(self.t("cancelled"))
             self._log("Downloads cancelados.")
             return
-        self.download_status_label.setText(f"{len(outputs)} ficheiro(s) gerado(s)." if self.lang == "pt" else f"{len(outputs)} file(s) generated.")
-        self._log(f"Concluído: {len(outputs)} ficheiro(s).")
-        QMessageBox.information(self, "Concluído", f"{len(outputs)} ficheiro(s) gerado(s).")
+        failed = len(getattr(self, "download_failed_rows", set()))
+        skipped = len(getattr(self, "download_skipped_rows", set()))
+        if failed or skipped:
+            status = (
+                f"{len(outputs)} gerado(s), {skipped} ignorado(s), {failed} falhado(s)."
+                if self.lang == "pt"
+                else f"{len(outputs)} generated, {skipped} skipped, {failed} failed."
+            )
+            self.download_status_label.setText(status)
+            self._log(f"Concluído: {status}")
+            if failed:
+                QMessageBox.warning(self, "Concluído com falhas", status)
+            else:
+                QMessageBox.information(self, "Concluído", status)
+        else:
+            self.download_status_label.setText(f"{len(outputs)} ficheiro(s) gerado(s)." if self.lang == "pt" else f"{len(outputs)} file(s) generated.")
+            self._log(f"Concluído: {len(outputs)} ficheiro(s).")
+            QMessageBox.information(self, "Concluído", f"{len(outputs)} ficheiro(s) gerado(s).")
 
 
 def main():

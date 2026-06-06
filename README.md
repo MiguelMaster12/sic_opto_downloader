@@ -1,496 +1,414 @@
-# OPTO Downloader
+<div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
-![Status](https://img.shields.io/badge/Status-Active-success)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/miguelmaster12)
+<br/>
 
-Ferramenta local para analisar, reproduzir temporariamente e descarregar episódios OPTO usando APIs HTTP.
+```
+  ██████╗ ██████╗ ████████╗ ██████╗
+ ██╔═══██╗██╔══██╗╚══██╔══╝██╔═══██╗
+ ██║   ██║██████╔╝   ██║   ██║   ██║
+ ██║   ██║██╔═══╝    ██║   ██║   ██║
+ ╚██████╔╝██║        ██║   ╚██████╔╝
+  ╚═════╝ ╚═╝        ╚═╝    ╚═════╝
+         D O W N L O A D E R
+```
 
-Uso pessoal apenas. Requer acesso legítimo ao conteúdo e um ficheiro `.wvd` próprio para obter keys Widevine.
+**Download de conteúdos OPTO · Interface moderna · Windows · macOS · Linux**
 
-> **Nota:** A forma recomendada de instalação é através dos pacotes disponíveis na página de [Releases](../../releases).
+<br/>
+
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-555?style=flat-square)](../../releases)
+[![Status](https://img.shields.io/badge/Status-Active-22c55e?style=flat-square)](../../releases)
+[![Buy Me a Coffee](https://img.shields.io/badge/☕%20Buy%20Me%20a%20Coffee-support-f59e0b?style=flat-square)](https://buymeacoffee.com/miguelmaster12)
+
+<br/>
+
+</div>
+
+---
+
+## O que é isto?
+
+Uma aplicação desktop para descarregar episódios da plataforma **OPTO (SIC)** para uso pessoal — com interface gráfica moderna, suporte a séries completas, player integrado e downloads em paralelo.
+
+> Requer uma conta OPTO com acesso legítimo ao conteúdo e um ficheiro `.wvd` próprio para desencriptação Widevine.
 
 ---
 
 ## ⚠️ Aviso Legal
 
-Este projeto foi desenvolvido para fins de **teste, aprendizagem e utilização pessoal** com conteúdos aos quais o utilizador possui acesso legítimo.
+Este projeto destina-se a **uso pessoal e educativo** com conteúdos aos quais tens acesso legítimo.
 
 **Não utilizes esta ferramenta para:**
+- aceder a conteúdos sem autorização
+- contornar subscrições ou restrições de acesso
+- redistribuir ou partilhar conteúdos protegidos
+- violar os termos de serviço da plataforma
 
-- aceder a conteúdos sem autorização;
-- contornar subscrições ou restrições de acesso;
-- redistribuir ou partilhar conteúdos protegidos;
-- violar os termos de serviço da plataforma.
-
-Cada utilizador é **responsável pela forma como utiliza a ferramenta**.
-
-O projeto não inclui credenciais, contas, conteúdos, ficheiros `.wvd`, nem qualquer mecanismo destinado a obter acesso indevido a conteúdos protegidos.
+O projeto não inclui credenciais, ficheiros `.wvd`, chaves privadas nem qualquer mecanismo de acesso indevido. **Cada utilizador é responsável pela forma como usa a ferramenta.**
 
 ---
 
 ## ✨ Funcionalidades
 
-- Interface Qt moderna (`opto_app.py`)
-- Download de episódio único
-- Download de séries em lote com seleção por temporada (incluindo `Extras T2` e nomes reais)
-- Player integrado com reprodução temporária e cache do episódio anterior/seguinte
-- Fila de downloads com progresso, agrupamento por série/temporada e cancelamento
-- Resolução de MPD, License URL assinada e PSSH via API/Kaltura `multirequest`
-- Scrape de séries e episódios via API OPTO (sem browser)
-- CLI de série em `opto_api_scraper.py`
-- CLI de episódio/download em `opto_api_media_resolver.py`
-- Gerador `.wvd` pela interface a partir de `private_key.pem` e `client_id.bin`
-- Preferências persistentes (idioma, pasta e qualidade predefinidos)
-- Verificação de ferramentas e estado do ambiente integrados
-- Suporte para Windows, macOS e Linux
+| | Funcionalidade |
+|---|---|
+| 🖥️ | Interface Qt moderna e responsiva |
+| 📥 | Download de episódio único ou série completa |
+| 📂 | Seleção por temporada, incluindo extras e nomes reais |
+| ▶️ | Player integrado com reprodução temporária |
+| ⚡ | Fila de downloads com workers paralelos e progresso em tempo real |
+| 🔑 | Gerador de `.wvd` integrado na interface |
+| ⚙️ | Preferências persistentes (idioma, pasta, qualidade) |
+| 🔍 | Diagnóstico de ferramentas e estado do ambiente |
+| 💻 | CLIs autónomos para uso avançado sem interface |
+| 🌐 | Windows · macOS · Linux |
 
 ---
 
-## 📋 Requisitos
+## 🚀 Instalação Rápida
 
-- Python 3.9 ou superior
-- Conta OPTO com acesso legítimo ao conteúdo
-- Ficheiro `.wvd` pessoal colocado em `secrets/`, `~/.wvd/` ou numa pasta antiga da app
-- `ffmpeg` e `ffprobe` (incluídos no instalador Windows)
-- `mp4decrypt` do Bento4 (incluído no instalador Windows)
+> **A forma mais simples é pelo instalador.** Descarrega, instala, e abre.
 
-> O ficheiro `.wvd` **não é fornecido** por este projeto.
-> Sem um `.wvd` válido, a ferramenta pode analisar e listar conteúdos, mas **não consegue desencriptar nem concluir downloads protegidos**.
+### Passo 1 — Descarregar
+
+Vai à página de **[Releases](../../releases)** e escolhe o ficheiro para o teu sistema:
+
+| Sistema | Instalador | Pacote ZIP |
+|---|---|---|
+| 🪟 Windows | `opto-downloader-*-windows-setup.exe` | `opto-downloader-*-windows.zip` |
+| 🍎 macOS | `opto-downloader-*-macos.dmg` | `opto-downloader-*-macos.zip` |
+| 🐧 Linux | `opto-downloader-*-linux.AppImage` | `opto-downloader-*-linux.zip` |
+
+**Recomendado:** usa o instalador (`.exe` / `.dmg` / `.AppImage`). O ZIP é para quem prefere controlo manual.
 
 ---
 
-## 🚀 Instalação
+### Passo 2 — Instalar
 
-A forma recomendada de utilização é através dos ficheiros disponibilizados na página de [Releases](../../releases).
+**🪟 Windows**
+Abre o `.exe` e segue o assistente. O `ffmpeg`, `ffprobe` e `mp4decrypt` são incluídos automaticamente.
 
-### 1. Descarregar
+**🍎 macOS**
+Abre o `.dmg` e arrasta a app para `Applications`.
 
-Escolhe o ficheiro correspondente ao teu sistema operativo.
-
-**Instalador / DMG / AppImage**
-
-| Sistema Operativo | Ficheiro                               |
-| ----------------- | -------------------------------------- |
-| Windows           | `opto-downloader-*-windows-setup.exe` |
-| macOS             | `opto-downloader-*-macos.dmg`      |
-| Linux             | `opto-downloader-*-linux.AppImage` |
-
-**Pacotes ZIP com scripts de instalação**
-
-| Sistema Operativo | Ficheiro                            |
-| ----------------- | ----------------------------------- |
-| Windows           | `opto-downloader-*-windows.zip` |
-| macOS             | `opto-downloader-*-macos.zip`   |
-| Linux             | `opto-downloader-*-linux.zip`   |
-
-### 2. Instalar ou Extrair
-
-Se descarregaste o instalador Windows, abre-o e escolhe a pasta de instalação no assistente. Se descarregaste um DMG ou AppImage, abre-o diretamente.
-
-Se descarregaste um ZIP, extrai o conteúdo para uma pasta à tua escolha.
-
-**macOS**
-
-Se instalaste pelo `.dmg` e o macOS bloquear a app por programador não verificado, executa:
+Se o macOS bloquear a app por "programador não verificado", executa no Terminal:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/OPTO Downloader.app"
 open "/Applications/OPTO Downloader.app"
 ```
 
-### 3. Instalação Local (a partir do ZIP ou repositório)
+**🐧 Linux**
+Dá permissão de execução ao `.AppImage` e abre:
 
 ```bash
+chmod +x opto-downloader-*.AppImage
+./opto-downloader-*.AppImage
+```
+
+---
+
+### Passo 3 — Instalar a partir do ZIP *(opcional)*
+
+Se preferiste o ZIP em vez do instalador:
+
+```bash
+# 1. Extrai o ZIP e entra na pasta
+# 2. Cria e activa um ambiente virtual
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# 3. Instala as dependências
 python3 instalar_dependencias.py
 ```
 
-Ou instala manualmente:
+Ou usa o script da tua plataforma:
 
 ```bash
-pip install PySide6 requests pywidevine yt-dlp
-```
-
-Também precisas de `ffmpeg`, `ffprobe` e `mp4decrypt` (Bento4) disponíveis no PATH. No instalador Windows estes binários são incluídos automaticamente.
-
-**Windows**
-
-```powershell
+# Windows
 .\platform\install_windows.bat
-# ou
-powershell -ExecutionPolicy Bypass -File .\platform\install_windows.ps1
-```
 
-**macOS**
-
-```bash
-chmod +x platform/install_macos.sh platform/run_macos.sh
+# macOS
 ./platform/install_macos.sh
-```
 
-**Linux**
-
-```bash
-chmod +x platform/install_linux.sh platform/run_linux.sh
+# Linux
 ./platform/install_linux.sh
 ```
 
-### 4. Iniciar
+---
 
-**Interface gráfica**
+### Passo 4 — Arrancar a aplicação
 
 ```bash
+# Interface gráfica
 python3 opto_app.py
+
+# Ou pelo script da plataforma:
+.\platform\run_windows.bat      # Windows
+./platform/run_macos.sh         # macOS
+./platform/run_linux.sh         # Linux
 ```
 
-**Windows**
+---
 
-```powershell
-.\platform\run_windows.bat
-```
+## 🔑 Configurar o ficheiro `.wvd`
 
-**macOS**
+O `.wvd` é um ficheiro de desencriptação Widevine **pessoal e intransmissível** — sem ele, a app não consegue concluir downloads protegidos.
+
+> 🔒 **Nunca partilhes** o teu `.wvd`, `private_key.pem`, `client_id.bin`, keys ou tokens de sessão.
+
+Tens duas formas de o obter:
+
+---
+
+### Opção A — Criar a partir de um dispositivo Android *(recomendado)*
+
+1. Prepara um ambiente Android (dispositivo físico ou emulador via Android Studio)
+2. Segue o guia: [Dumping Your own L3 CDM — VideoHelp Forum](https://forum.videohelp.com/threads/408031-Dumping-Your-own-L3-CDM-with-Android-Studio)
+3. Guarda os ficheiros `client_id.bin` e `private_key.pem` obtidos
+4. Na app, vai ao separador **Estado → Gerar ficheiro .wvd**
+5. Seleciona os dois ficheiros, escolhe a pasta de saída e clica em **Gerar .wvd**
+
+### Opção B — Usar um CDM partilhado por terceiros
+
+1. Descarrega de uma fonte de confiança: [Ready to use CDMs — VideoHelp Forum](https://forum.videohelp.com/threads/413719-Ready-to-use-CDMs-available-here%21)
+2. Extrai o `client_id.bin` e o `private_key.pem`
+3. Segue os passos 4 e 5 da Opção A
+
+> ⚠️ A utilização de CDMs de terceiros é da tua inteira responsabilidade.
+
+**Onde colocar o `.wvd`** — a app procura nestas localizações, por ordem:
+- `secrets/` (pasta do projeto)
+- `~/.wvd/`
+- Pastas antigas da app
+
+---
+
+## 🎬 Como usar
+
+### Primeiro arranque
+
+1. Abre a app e vai ao separador **Estado**
+2. Confirma que `ffmpeg`, `ffprobe` e `mp4decrypt` aparecem como disponíveis
+3. Coloca o teu `.wvd` em `secrets/` — ou gera-o conforme acima
+4. Vai a **Preferências** e define a pasta de destino e qualidade padrão
+5. Estás pronto
+
+---
+
+### Descarregar um episódio
+
+1. Vai ao separador **Episódio**
+2. Cola o URL do episódio:
+   ```
+   https://opto.sic.pt/vod/nome-do-episodio/uuid
+   ```
+3. Clica em **Analisar**, escolhe a qualidade
+4. Clica em **Download** — ou **Play** para reprodução temporária sem guardar
+
+---
+
+### Descarregar uma série
+
+1. Vai ao separador **Série**
+2. Cola o URL da série:
+   ```
+   https://opto.sic.pt/series/nome-da-serie/uuid
+   ```
+3. Carrega os episódios, seleciona temporadas ou episódios específicos
+4. Clica em **Download em lote**
+
+A app organiza automaticamente os ficheiros por série e temporada, ignora episódios já descarregados e faz prefetch de keys em background.
+
+---
+
+### Fila de downloads
+
+No separador **Downloads** podes acompanhar o progresso, cancelar tarefas e ver o histórico de ficheiros concluídos. O número de workers paralelos é definido nas **Preferências**.
+
+---
+
+## 💻 Uso via linha de comandos *(avançado)*
 
 ```bash
-./platform/run_macos.sh
-```
-
-**Linux**
-
-```bash
-./platform/run_linux.sh
-```
-
----
-
-## 🔑 Como Obter um `.wvd`
-
-Este projeto requer um CDM Widevine L3 em formato `.wvd`.
-
-> **Importante:** sem um `.wvd` válido em `secrets/`, `~/.wvd/` ou numa pasta antiga da app, os downloads protegidos não são concluídos.
-
-Tens duas opções:
-
----
-
-### Opção A — Criar o teu próprio CDM a partir de um dispositivo Android
-
-Este é o método recomendado. O CDM é extraído de um dispositivo ou emulador Android que controlas.
-
-**Guia de referência:**
-
-- [Dumping Your own L3 CDM with Android Studio — VideoHelp Forum](https://forum.videohelp.com/threads/408031-Dumping-Your-own-L3-CDM-with-Android-Studio)
-
-**Passos:**
-
-1. Prepara um ambiente Android próprio (dispositivo físico ou emulador via Android Studio).
-2. Segue o guia acima para extrair o CDM.
-3. Guarda os ficheiros `client_id.bin` e `private_key.pem`.
-4. Abre a aplicação, vai ao separador **Estado** e usa a secção **Gerar ficheiro .wvd**.
-5. Seleciona os dois ficheiros, escolhe a pasta de saída e clica em **Gerar .wvd**.
-
----
-
-### Opção B — Usar ficheiros partilhados por terceiros
-
-Caso não queiras criar o teu próprio, existem ficheiros partilhados publicamente por terceiros:
-
-- [Ready to use CDMs — VideoHelp Forum](https://forum.videohelp.com/threads/413719-Ready-to-use-CDMs-available-here%21)
-
-O ZIP costuma conter os ficheiros `client_id.bin` e `private_key.pem`. Após descarregar:
-
-1. Extrai o `client_id.bin` e o `private_key.pem`.
-2. Abre a aplicação, vai ao separador **Estado** e usa a secção **Gerar ficheiro .wvd**.
-3. Seleciona os dois ficheiros, escolhe a pasta de saída e clica em **Gerar .wvd**.
-
-> ⚠️ Usa apenas ficheiros de fontes em que confias. A utilização de CDMs de terceiros é da tua inteira responsabilidade.
-
----
-
-> 🔒 Nunca partilhes o teu `.wvd`, `client_id.bin`, `private_key.pem`, keys, tokens ou dados de sessão.
-
----
-
-## 🛠️ Primeiro Uso
-
-1. Inicia a aplicação com `python3 opto_app.py` ou pelo script da tua plataforma.
-2. Vai ao separador **Estado**.
-3. Verifica se todas as ferramentas necessárias estão disponíveis (`ffmpeg`, `ffprobe`, `mp4decrypt`).
-4. Se já tens um `.wvd`, coloca-o em `secrets/` ou `~/.wvd/`.
-5. Se tens `private_key.pem` e `client_id.bin`, usa **Gerar ficheiro .wvd** para criar o `.wvd`.
-6. Vai ao separador **Preferências** e define a pasta de destino e a qualidade predefinida.
-7. Abre o separador **Episódio** ou **Série** e começa a descarregar.
-
-> Se o `.wvd` não existir ou não for válido, a aplicação pode resolver e analisar conteúdos, mas falhará na obtenção de keys e desencriptação.
-
----
-
-## 📖 Utilização
-
-### Interface Gráfica
-
-#### Episódio
-
-Cola uma URL ou UUID de episódio:
-
-```
-https://opto.sic.pt/vod/nome-do-episodio/uuid
-```
-
-Clica em **Analisar**, escolhe a qualidade e clica em **Download** ou **Play** para reprodução temporária sem guardar na pasta final.
-
-#### Série
-
-Cola uma URL de série:
-
-```
-https://opto.sic.pt/series/nome-da-serie/uuid
-```
-
-Carrega os episódios, seleciona temporadas/episódios e clica em **Download em lote** ou **Play em playlist**.
-
-#### Downloads
-
-Acompanha a fila de downloads com progresso individual, agrupamento por série/temporada, cancelamento e lista de ficheiros concluídos.
-
-#### Player
-
-Reproduz ficheiros temporários gerados pela app. Mantém cache do episódio anterior e seguinte para transições rápidas.
-
-#### Preferências
-
-Configura idioma, pasta de destino predefinida e qualidade predefinida.
-
-#### Estado
-
-Verifica a disponibilidade de ferramentas externas e gera o ficheiro `.wvd`.
-
----
-
-## 💻 CLI
-
-Para utilização sem interface gráfica, estão disponíveis dois scripts autónomos.
-
-### Listar uma série
-
-```bash
+# Listar episódios de uma série
 python3 opto_api_scraper.py "https://opto.sic.pt/series/a-heranca/UUID" --json
-```
 
-### Resolver um episódio
+# Resolver um episódio (MPD, License URL, PSSH)
+python3 opto_api_media_resolver.py "URL_OU_UUID" --json
 
-```bash
-python3 opto_api_media_resolver.py "URL_OU_UUID_DO_EPISODIO" --json
-```
+# Testar keys Widevine
+python3 opto_api_media_resolver.py "URL_OU_UUID" --test-keys --json
 
-### Testar keys Widevine
-
-```bash
-python3 opto_api_media_resolver.py "URL_OU_UUID_DO_EPISODIO" --test-keys --json
-```
-
-### Fazer download
-
-```bash
-python3 opto_api_media_resolver.py "URL_OU_UUID_DO_EPISODIO" --download --quality 720
-```
-
----
-
-## 🏗️ Builds Locais
-
-Os artefactos são criados em `release-dist/`.
-
-**ZIPs por plataforma**
-
-```bash
-scripts/build_release_zips.sh vX.Y.Z
-```
-
-**macOS DMG**
-
-```bash
-scripts/build_macos_dmg.sh vX.Y.Z
-```
-
-**Windows Installer**
-
-```powershell
-scripts\build_windows_exe.ps1 vX.Y.Z
-```
-
-**Linux AppImage**
-
-```bash
-scripts/build_linux_appimage.sh vX.Y.Z
+# Fazer download via CLI
+python3 opto_api_media_resolver.py "URL_OU_UUID" --download --quality 720
 ```
 
 ---
 
 ## 🔄 Atualizar
 
-Transfere a versão mais recente na página de [Releases](../../releases).
+Vai à página de **[Releases](../../releases)** e descarrega a versão mais recente.
 
-**Instalador / DMG / AppImage**
+- **Windows:** abre o novo `.exe` e instala por cima da versão anterior
+- **macOS:** abre o `.dmg` e substitui a app em `Applications`
+- **Linux:** substitui o `.AppImage` antigo e confirma a permissão de execução
+- **ZIP:** extrai para a mesma pasta, substituindo os ficheiros; corre o script de instalação se houver erros de dependências
 
-- Windows: abre o novo `*-windows-setup.exe` e instala por cima da versão anterior.
-- macOS: abre o novo `.dmg` e copia a app novamente para `Applications`, substituindo a anterior.
-- Linux: substitui o `.AppImage` antigo pelo novo e garante que tem permissão de execução.
-
-**Pacote ZIP**
-
-1. Descarrega o ZIP mais recente para a tua plataforma.
-2. Extrai para uma nova pasta ou substitui os ficheiros antigos.
-3. Executa novamente o script de instalação da tua plataforma se houver erro de dependências.
-
-> Mantém a pasta `secrets/` e o teu `.wvd`. Sem o `.wvd`, os downloads protegidos não são concluídos.
+> Mantém sempre a pasta `secrets/` e o teu `.wvd` ao atualizar.
 
 ---
 
 ## 🗑️ Desinstalar
 
-Fecha a aplicação antes de remover ficheiros.
+**Windows** — usa "Aplicações instaladas" para remover; se usaste o ZIP, apaga a pasta manualmente.
 
-**Windows**
-
-Usa "Aplicações instaladas" / "Programas e Funcionalidades" do Windows para remover o Opto Downloader. Se usaste o ZIP, apaga a pasta onde o extraíste.
-
-**macOS**
-
+**macOS:**
 ```bash
 rm -rf "/Applications/OPTO Downloader.app"
 ```
 
-**Linux**
+**Linux** — apaga o `.AppImage` ou a pasta extraída.
 
-Apaga a pasta onde extraíste o ZIP ou remove o `.AppImage` que descarregaste.
-
-**Limpeza opcional de dados locais**
-
+**Limpeza opcional de dados locais:**
 ```bash
 rm -rf config state downloads vendor secrets
 ```
-
-> Atenção: apagar `secrets/` remove o teu `.wvd`, `private_key.pem` e `client_id.bin`.
-
----
-
-## 📦 Dependências
-
-O instalador prepara automaticamente:
-
-| Dependência          | Tipo                            |
-| -------------------- | ------------------------------- |
-| `PySide6`            | Interface gráfica Qt            |
-| `yt-dlp`             | Download de streams             |
-| `requests`           | Pedidos HTTP                    |
-| `pywidevine`         | Desencriptação Widevine         |
-| `ffmpeg` / `ffprobe` | Processamento de média          |
-| `mp4decrypt`         | Desencriptação de ficheiros MP4 |
-
-> Dependendo do sistema operativo, algumas dependências podem exigir permissões de administrador.
+> ⚠️ Apagar `secrets/` remove o teu `.wvd`, `private_key.pem` e `client_id.bin`.
 
 ---
 
-## 📁 Estrutura do Projeto
-
-| Ficheiro / Pasta             | Descrição                                                  |
-| ---------------------------- | ---------------------------------------------------------- |
-| `opto_app.py`                | Interface Qt principal                                     |
-| `opto_api_scraper.py`        | CLI de scrape de séries via API                            |
-| `opto_api_media_resolver.py` | CLI de resolução de episódio, keys e download              |
-| `instalar_dependencias.py`   | Instalador local de dependências                           |
-| `assets/`                    | Ícones e imagens da app                                    |
-| `config/`                    | Configuração persistente                                   |
-| `platform/`                  | Scripts de instalação e arranque por plataforma            |
-| `scripts/`                   | Scripts de build e release                                 |
-| `secrets/`                   | Pasta para o ficheiro `.wvd` (não incluída no repositório) |
-| `state/`                     | Cache de listagens e histórico de downloads                |
-
----
-
-## 🐛 Problemas Comuns
+## 🐛 Problemas comuns
 
 <details>
-<summary><strong>macOS bloqueia a app por programador não verificado</strong></summary>
+<summary><strong>macOS bloqueia a app — "programador não verificado"</strong></summary>
 
-Enquanto a app não estiver assinada/notarizada pela Apple, o macOS pode mostrar uma mensagem a dizer que não conseguiu confirmar se a aplicação contém malware.
-
-Para abrir depois de instalar em `Applications`:
+A app ainda não está assinada pela Apple. Para contornar:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/OPTO Downloader.app"
 open "/Applications/OPTO Downloader.app"
 ```
 
-Também podes tentar abrir com botão direito no Finder e escolher **Abrir**.
-
+Em alternativa, no Finder clica com o botão direito na app e escolhe **Abrir**.
 </details>
 
 <details>
-<summary><strong>.wvd não encontrado</strong></summary>
+<summary><strong>Ficheiro <code>.wvd</code> não encontrado</strong></summary>
 
-A app procura o ficheiro `.wvd` nas seguintes localizações, por ordem:
-
-- `secrets/` (pasta do projeto)
-- `~/.wvd/`
-- Pastas antigas da app
-
-Coloca o ficheiro `.wvd` em qualquer uma dessas localizações.
-
+A app procura o `.wvd` em `secrets/`, `~/.wvd/` e pastas antigas da app.
+Coloca o ficheiro em qualquer uma dessas localizações e reinicia a app.
 </details>
 
 <details>
 <summary><strong>MPD ou License URL não obtidos</strong></summary>
 
 Confirma que:
-
-- a sessão na OPTO está ativa e válida;
-- consegues reproduzir o conteúdo num browser normal;
-- a conta possui acesso ao conteúdo pretendido.
+- a tua sessão na OPTO está ativa
+- consegues reproduzir o conteúdo num browser normal
+- a tua conta tem acesso ao conteúdo em causa
 </details>
 
 <details>
-<summary><strong>ffmpeg, ffprobe ou mp4decrypt em falta</strong></summary>
+<summary><strong><code>ffmpeg</code>, <code>ffprobe</code> ou <code>mp4decrypt</code> em falta</strong></summary>
 
-Executa novamente o instalador da tua plataforma ou instala as ferramentas manualmente e garante que estão disponíveis no PATH.
+Corre novamente o instalador da tua plataforma, ou instala as ferramentas manualmente e garante que estão disponíveis no `PATH`.
 
-Verifica o estado das ferramentas no separador **Estado** da interface.
-
+Verifica o estado no separador **Estado** da interface.
 </details>
 
 <details>
-<summary><strong>Ficheiro <code>.invalid.mp4</code></strong></summary>
+<summary><strong>Ficheiro <code>.invalid.mp4</code> gerado</strong></summary>
 
-A validação final detetou um ficheiro inválido. Confirma:
-
-- acesso ao conteúdo na tua conta;
-- validade do ficheiro `.wvd`;
-- disponibilidade de `ffmpeg`, `ffprobe` e `mp4decrypt` durante o processo.
+A validação final detectou um problema. Confirma:
+- acesso ao conteúdo na tua conta
+- validade do `.wvd`
+- disponibilidade de `ffmpeg`, `ffprobe` e `mp4decrypt` durante o download
 </details>
 
 ---
 
-## 🤝 Contribuições
+## 📦 Dependências
 
-Melhorias são bem-vindas, especialmente em:
+| Pacote | Função |
+|---|---|
+| `PySide6` | Interface gráfica Qt |
+| `yt-dlp` | Download de streams |
+| `requests` | Pedidos HTTP |
+| `pywidevine` | Desencriptação Widevine |
+| `ffmpeg` / `ffprobe` | Processamento de média |
+| `mp4decrypt` | Desencriptação de MP4 (Bento4) |
 
-- robustez do scraping e resolução via API;
-- tratamento de erros;
-- experiência de utilização;
-- documentação;
-- organização do código;
-- builds multiplataforma.
-
-Por favor, **não abras issues ou pull requests** contendo conteúdos protegidos, credenciais, tokens, ficheiros `.wvd`, chaves privadas ou ficheiros descarregados.
+No instalador Windows, todos os binários são incluídos automaticamente.
 
 ---
 
-## ☕ Apoiar o Projeto
+## 📁 Estrutura do projeto
 
-Este projeto é desenvolvido e mantido em tempo livre. Se te foi útil e quiseres apoiar o desenvolvimento:
+```
+opto-downloader/
+├── opto_app.py                  # Interface Qt principal
+├── opto_api_scraper.py          # CLI — scrape de séries
+├── opto_api_media_resolver.py   # CLI — resolução de episódio e download
+├── instalar_dependencias.py     # Instalador local de dependências
+├── assets/                      # Ícones e imagens
+├── config/                      # Preferências persistentes
+├── platform/                    # Scripts de instalação e arranque
+├── scripts/                     # Scripts de build e release
+├── secrets/                     # Pasta para o .wvd (não incluída no repo)
+└── state/                       # Cache de listagens e histórico
+```
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/miguelmaster12)
+---
+
+## 🏗️ Builds locais
+
+```bash
+# ZIPs multiplataforma
+scripts/build_release_zips.sh vX.Y.Z
+
+# macOS DMG
+scripts/build_macos_dmg.sh vX.Y.Z
+
+# Windows Installer
+scripts\build_windows_exe.ps1 vX.Y.Z
+
+# Linux AppImage
+scripts/build_linux_appimage.sh vX.Y.Z
+```
+
+Os artefactos são gerados em `release-dist/`.
+
+---
+
+## 🤝 Contribuir
+
+Contribuições são bem-vindas, em especial em:
+
+- robustez do scraping e resolução via API
+- tratamento de erros e edge cases
+- experiência de utilização
+- documentação
+- builds multiplataforma
+
+Por favor, **não abras issues ou pull requests** com conteúdos protegidos, credenciais, tokens, ficheiros `.wvd`, chaves privadas ou ficheiros descarregados.
+
+---
+
+## ☕ Apoiar o projeto
+
+Este projeto é desenvolvido e mantido em tempo livre.
+Se te foi útil, considera apoiar:
+
+<div align="center">
+
+[![Buy Me a Coffee](https://img.shields.io/badge/☕%20Buy%20Me%20a%20Coffee-f59e0b?style=for-the-badge)](https://buymeacoffee.com/miguelmaster12)
+
+</div>
+
+---
+
+<div align="center">
+<sub>Feito com atenção ao detalhe · Uso pessoal · Sem afiliação com a SIC ou OPTO</sub>
+</div>

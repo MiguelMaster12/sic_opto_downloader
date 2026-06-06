@@ -1,10 +1,12 @@
 .venv/
 __pycache__/
 *.pyc
+*.spec
 .DS_Store
 build/
 dist/
 release-dist/
+config/sic_opto_config.json
 
 chrome-debug-profile/
 secrets/
