@@ -4,16 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "opto_app.py"
-      - "opto_api_scraper.py"
-      - "opto_api_media_resolver.py"
-      - "instalar_dependencias.py"
-      - "scripts/**"
-      - "platform/**"
-      - "assets/**"
-      - "config/**"
-      - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
       version:
