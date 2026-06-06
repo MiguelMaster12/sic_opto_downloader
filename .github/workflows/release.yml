@@ -94,9 +94,11 @@ jobs:
     needs: prepare
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/upload-artifact@v4
         with:
-          python-version: "3.11"
+          name: windows-exe
+          path: release-dist/*.zip
+          if-no-files-found: error
       - name: Build Windows EXE
         shell: pwsh
         run: scripts/build_windows_exe.ps1 "${{ needs.prepare.outputs.version }}"
