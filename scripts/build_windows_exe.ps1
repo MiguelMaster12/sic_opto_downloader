@@ -130,4 +130,10 @@ if ($LASTEXITCODE -ne 0) {
     throw "Falha ao criar instalador com Inno Setup (codigo $LASTEXITCODE)."
 }
 
-Write-Host "Instalador criado: release-dist\$setupName.exe"
+$setupPath = Join-Path "release-dist" "$setupName.exe"
+if (-not (Test-Path -LiteralPath $setupPath)) {
+    throw "Instalador nao encontrado depois do build: $setupPath"
+}
+
+Write-Host "Instalador criado: $setupPath"
+Get-ChildItem -LiteralPath "release-dist" | Format-Table Name, Length

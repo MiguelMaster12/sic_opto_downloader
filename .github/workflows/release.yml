@@ -102,6 +102,9 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: scripts/build_windows_exe.ps1 "${{ needs.prepare.outputs.version }}"
+      - name: List Windows assets
+        shell: pwsh
+        run: Get-ChildItem -LiteralPath release-dist | Format-Table Name, Length
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
