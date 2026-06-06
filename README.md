@@ -69,25 +69,25 @@ A forma recomendada de utilização é através dos ficheiros disponibilizados n
 
 Escolhe o ficheiro correspondente ao teu sistema operativo.
 
-**Executáveis / DMG / AppImage**
+**Instalador / DMG / AppImage**
 
 | Sistema Operativo | Ficheiro                               |
 | ----------------- | -------------------------------------- |
-| Windows           | `sic-opto-downloader-*-windows.exe`    |
-| macOS             | `sic-opto-downloader-*-macos.dmg`      |
-| Linux             | `sic-opto-downloader-*-linux.AppImage` |
+| Windows           | `opto-downloader-*-windows-setup.exe` |
+| macOS             | `opto-downloader-*-macos.dmg`      |
+| Linux             | `opto-downloader-*-linux.AppImage` |
 
 **Pacotes ZIP com scripts de instalação**
 
 | Sistema Operativo | Ficheiro                            |
 | ----------------- | ----------------------------------- |
-| Windows           | `sic-opto-downloader-*-windows.zip` |
-| macOS             | `sic-opto-downloader-*-macos.zip`   |
-| Linux             | `sic-opto-downloader-*-linux.zip`   |
+| Windows           | `opto-downloader-*-windows.zip` |
+| macOS             | `opto-downloader-*-macos.zip`   |
+| Linux             | `opto-downloader-*-linux.zip`   |
 
 ### 2. Instalar ou Extrair
 
-Se descarregaste um executável, DMG ou AppImage, abre-o diretamente.
+Se descarregaste o instalador Windows, abre-o e escolhe a pasta de instalação no assistente. Se descarregaste um DMG ou AppImage, abre-o diretamente.
 
 Se descarregaste um ZIP, extrai o conteúdo para uma pasta à tua escolha.
 
@@ -316,7 +316,7 @@ scripts/build_release_zips.sh vX.Y.Z
 scripts/build_macos_dmg.sh vX.Y.Z
 ```
 
-**Windows EXE**
+**Windows Installer**
 
 ```powershell
 scripts\build_windows_exe.ps1 vX.Y.Z
@@ -334,9 +334,9 @@ scripts/build_linux_appimage.sh vX.Y.Z
 
 Transfere a versão mais recente na página de [Releases](../../releases).
 
-**Executável / DMG / AppImage**
+**Instalador / DMG / AppImage**
 
-- Windows: substitui o `.exe` antigo pelo novo.
+- Windows: abre o novo `*-windows-setup.exe` e instala por cima da versão anterior.
 - macOS: abre o novo `.dmg` e copia a app novamente para `Applications`, substituindo a anterior.
 - Linux: substitui o `.AppImage` antigo pelo novo e garante que tem permissão de execução.
 
@@ -356,7 +356,7 @@ Fecha a aplicação antes de remover ficheiros.
 
 **Windows**
 
-Apaga a pasta onde extraíste o ZIP ou remove o `.exe` que descarregaste.
+Usa "Aplicações instaladas" / "Programas e Funcionalidades" do Windows para remover o Opto Downloader. Se usaste o ZIP, apaga a pasta onde o extraíste.
 
 **macOS**
 

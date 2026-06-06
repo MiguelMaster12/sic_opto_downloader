@@ -97,12 +97,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Build Windows EXE
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build Windows installer
         shell: pwsh
         run: scripts/build_windows_exe.ps1 "${{ needs.prepare.outputs.version }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
+          name: windows-installer
           path: release-dist/*.exe
           if-no-files-found: error
 
