@@ -14,13 +14,15 @@ if [[ $# -gt 1 ]]; then
 fi
 
 VERSION="${1:-}"
-APP_NAME="sic-opto-downloader"
+APP_NAME="opto-downloader"
 DIST_DIR="release-dist"
 STAGING_DIR="$DIST_DIR/zip-staging"
 
 COMMON_FILES=(
   "README.md"
-  "v3.py"
+  "opto_app.py"
+  "opto_api_scraper.py"
+  "opto_api_media_resolver.py"
   "instalar_dependencias.py"
   "config/sic_opto_config.example.json"
 )
@@ -34,6 +36,10 @@ copy_common_files() {
   for file in "${COMMON_FILES[@]}"; do
     cp "$file" "$target_dir/$file"
   done
+  if [[ -d "assets" ]]; then
+    cp -r assets "$target_dir/assets"
+    find "$target_dir/assets" -name ".DS_Store" -delete
+  fi
 }
 
 package_platform() {

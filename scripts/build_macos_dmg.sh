@@ -19,14 +19,11 @@ if [[ $# -gt 1 ]]; then
 fi
 
 VERSION="${1:-}"
-APP_NAME="sic-opto-downloader"
-DISPLAY_NAME="SIC OPTO Downloader"
+APP_NAME="opto-downloader"
+DISPLAY_NAME="Opto Downloader"
 DIST_DIR="release-dist"
 STAGING_DIR="$DIST_DIR/dmg-staging"
 ICON_SOURCE="assets/app-icon.png"
-if [[ ! -f "$ICON_SOURCE" && -f "ChatGPT Image 4_06_2026, 15_43_40.png" ]]; then
-  ICON_SOURCE="ChatGPT Image 4_06_2026, 15_43_40.png"
-fi
 
 DMG_NAME="$APP_NAME"
 if [[ -n "$VERSION" ]]; then
@@ -44,11 +41,17 @@ rm -rf "$STAGING_DIR" "$DMG_PATH"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR/config"
 
 cp README.md "$RESOURCES_DIR/"
-cp v3.py "$RESOURCES_DIR/"
+cp opto_app.py "$RESOURCES_DIR/"
+cp opto_api_scraper.py "$RESOURCES_DIR/"
+cp opto_api_media_resolver.py "$RESOURCES_DIR/"
 cp instalar_dependencias.py "$RESOURCES_DIR/"
 cp platform/macos/install_macos.sh "$RESOURCES_DIR/"
 cp platform/macos/run_macos.sh "$RESOURCES_DIR/"
 cp config/sic_opto_config.example.json "$RESOURCES_DIR/config/"
+if [[ -d "assets" ]]; then
+  cp -r assets "$RESOURCES_DIR/assets"
+  find "$RESOURCES_DIR/assets" -name ".DS_Store" -delete
+fi
 
 if [[ -f "$ICON_SOURCE" ]]; then
   ICONSET_DIR="$STAGING_DIR/app-icon.iconset"
@@ -76,8 +79,8 @@ cat > "$MACOS_DIR/$DISPLAY_NAME" <<'EOF'
 set -euo pipefail
 
 APP_RESOURCES="$(cd "$(dirname "$0")/../Resources" && pwd)"
-SUPPORT_DIR="$HOME/Library/Application Support/SIC OPTO Downloader"
-LOG_DIR="$HOME/Library/Logs/SIC OPTO Downloader"
+SUPPORT_DIR="$HOME/Library/Application Support/Opto Downloader"
+LOG_DIR="$HOME/Library/Logs/Opto Downloader"
 LOG_FILE="$LOG_DIR/app.log"
 
 export PATH="/usr/local/bin:/Library/Frameworks/Python.framework/Versions/Current/bin:/opt/homebrew/bin:$SUPPORT_DIR/vendor/bin:$PATH"
@@ -86,15 +89,22 @@ mkdir -p "$SUPPORT_DIR/config" "$LOG_DIR"
 
 {
   echo
-  echo "=== SIC OPTO Downloader - $(date) ==="
+  echo "=== Opto Downloader - $(date) ==="
 } >> "$LOG_FILE"
 
 copy_runtime_files() {
   cp "$APP_RESOURCES/README.md" "$SUPPORT_DIR/README.md"
-  cp "$APP_RESOURCES/v3.py" "$SUPPORT_DIR/v3.py"
+  cp "$APP_RESOURCES/opto_app.py" "$SUPPORT_DIR/opto_app.py"
+  cp "$APP_RESOURCES/opto_api_scraper.py" "$SUPPORT_DIR/opto_api_scraper.py"
+  cp "$APP_RESOURCES/opto_api_media_resolver.py" "$SUPPORT_DIR/opto_api_media_resolver.py"
   cp "$APP_RESOURCES/instalar_dependencias.py" "$SUPPORT_DIR/instalar_dependencias.py"
   cp "$APP_RESOURCES/install_macos.sh" "$SUPPORT_DIR/install_macos.sh"
   cp "$APP_RESOURCES/run_macos.sh" "$SUPPORT_DIR/run_macos.sh"
+  if [[ -d "$APP_RESOURCES/assets" ]]; then
+    rm -rf "$SUPPORT_DIR/assets"
+    cp -r "$APP_RESOURCES/assets" "$SUPPORT_DIR/assets"
+    find "$SUPPORT_DIR/assets" -name ".DS_Store" -delete
+  fi
   if [[ ! -f "$SUPPORT_DIR/config/sic_opto_config.example.json" ]]; then
     cp "$APP_RESOURCES/config/sic_opto_config.example.json" "$SUPPORT_DIR/config/"
   fi
@@ -102,7 +112,7 @@ copy_runtime_files() {
 }
 
 show_dialog() {
-  /usr/bin/osascript -e "display dialog \"$1\" buttons {\"OK\"} default button \"OK\" with title \"SIC OPTO Downloader\"" >/dev/null 2>&1 || true
+  /usr/bin/osascript -e "display dialog \"$1\" buttons {\"OK\"} default button \"OK\" with title \"Opto Downloader\"" >/dev/null 2>&1 || true
 }
 
 copy_runtime_files >> "$LOG_FILE" 2>&1
@@ -114,41 +124,101 @@ import queue
 import subprocess
 import sys
 import threading
-import tkinter as tk
 from pathlib import Path
-from tkinter import scrolledtext
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QApplication, QLabel, QProgressBar,
+    QTextEdit, QVBoxLayout, QWidget,
+)
 
 root_dir = Path.cwd()
-log_file = Path.home() / "Library" / "Logs" / "SIC OPTO Downloader" / "app.log"
+log_file = Path.home() / "Library" / "Logs" / "Opto Downloader" / "app.log"
 q = queue.Queue()
 
-root = tk.Tk()
-root.title("SIC OPTO Downloader - Instalação")
-root.geometry("760x460")
-root.resizable(True, True)
+app = QApplication(sys.argv)
+app.setApplicationName("Opto Downloader")
 
-header = tk.Label(
-    root,
-    text="A preparar a aplicação. Isto pode demorar alguns minutos.",
-    font=("Helvetica", 13, "bold"),
-    anchor="w",
-    padx=14,
-    pady=10,
+win = QWidget()
+win.setWindowTitle("Opto Downloader — Instalação")
+win.resize(820, 520)
+win.setStyleSheet("""
+    QWidget  { background: #F6F4EF; color: #1F1D1A;
+               font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; }
+    QTextEdit { background: #FFFFFF; border: 1px solid #DDD7CC;
+                border-radius: 10px; padding: 10px;
+                font-family: Menlo, Consolas, monospace; font-size: 12px; }
+    QProgressBar { background: #F0EDE7; border: 1px solid #DDD7CC;
+                   border-radius: 6px; height: 8px; }
+    QProgressBar::chunk { background: #181613; border-radius: 5px; }
+""")
+
+layout = QVBoxLayout(win)
+layout.setContentsMargins(24, 20, 24, 20)
+layout.setSpacing(10)
+
+header = QLabel("A preparar o Opto Downloader")
+header.setFont(QFont("", 15, QFont.Weight.Bold))
+layout.addWidget(header)
+
+details = QLabel(
+    "A primeira abertura instala dependências locais e ferramentas necessárias.\n"
+    "A app abre automaticamente quando terminar.\n"
+    f"Pasta da aplicação: {root_dir}"
 )
-header.pack(fill="x")
+details.setWordWrap(True)
+details.setStyleSheet("color: #756E66;")
+layout.addWidget(details)
 
-status = tk.StringVar(value="A iniciar instalação...")
-tk.Label(root, textvariable=status, anchor="w", padx=14).pack(fill="x")
+status_lbl = QLabel("A iniciar preparação...")
+status_lbl.setStyleSheet("font-weight: 600;")
+layout.addWidget(status_lbl)
 
-log = scrolledtext.ScrolledText(root, height=18, wrap="word")
-log.pack(fill="both", expand=True, padx=14, pady=(8, 12))
-log.configure(state="disabled")
+progress = QProgressBar()
+progress.setRange(0, 0)   # indeterminate
+layout.addWidget(progress)
+
+log_box = QTextEdit()
+log_box.setReadOnly(True)
+layout.addWidget(log_box, 1)
+
+win.show()
 
 def append(text):
-    log.configure(state="normal")
-    log.insert("end", text)
-    log.see("end")
-    log.configure(state="disabled")
+    log_box.append(text.rstrip())
+    sb = log_box.verticalScrollBar()
+    sb.setValue(sb.maximum())
+
+def poll():
+    try:
+        while True:
+            kind, value = q.get_nowait()
+            if kind == "line":
+                append(value)
+                lower = value.lower()
+                if "a instalar" in lower or "[ok]" in lower:
+                    status_lbl.setText(value.strip())
+            elif kind == "done":
+                progress.setRange(0, 1)
+                progress.setValue(1)
+                if value == 0:
+                    status_lbl.setText("Instalação concluída. A abrir aplicação...")
+                    QTimer.singleShot(900, app.quit)
+                else:
+                    status_lbl.setText(f"Instalação falhou (código {value}).")
+                    append(f"\nInstalação falhou (código {value}).\n")
+            elif kind == "error":
+                progress.setRange(0, 1)
+                progress.setValue(0)
+                status_lbl.setText("Instalação falhou.")
+                append(f"\nErro: {value}\n")
+    except queue.Empty:
+        pass
+
+timer = QTimer()
+timer.timeout.connect(poll)
+timer.start(100)
 
 def worker():
     try:
@@ -170,52 +240,17 @@ def worker():
                 fh.write(line)
                 fh.flush()
                 q.put(("line", line))
-        code = proc.wait()
-        q.put(("done", code))
+        q.put(("done", proc.wait()))
     except Exception as exc:
         q.put(("error", str(exc)))
 
-def poll():
-    try:
-        while True:
-            kind, value = q.get_nowait()
-            if kind == "line":
-                append(value)
-                lower = value.lower()
-                if "a instalar" in lower:
-                    status.set(value.strip())
-                elif "[ok]" in lower:
-                    status.set(value.strip())
-            elif kind == "done":
-                if value == 0:
-                    status.set("Instalação concluída. A abrir aplicação...")
-                    root.after(900, root.destroy)
-                else:
-                    status.set(f"Instalação falhou (código {value}).")
-                    append(f"\nInstalação falhou (código {value}).\n")
-            elif kind == "error":
-                status.set("Instalação falhou.")
-                append(f"\nErro: {value}\n")
-    except queue.Empty:
-        pass
-    if root.winfo_exists():
-        root.after(100, poll)
-
 threading.Thread(target=worker, daemon=True).start()
-root.after(100, poll)
-root.mainloop()
+sys.exit(app.exec())
 PY
 }
 
 needs_install=0
 if [[ ! -x ".venv/bin/python" ]]; then
-  needs_install=1
-elif ! ".venv/bin/python" - <<'PY' >> "$LOG_FILE" 2>&1
-import tkinter
-PY
-then
-  echo "A recriar .venv: Python sem Tkinter funcional detectado." >> "$LOG_FILE"
-  rm -rf ".venv"
   needs_install=1
 fi
 
@@ -230,7 +265,7 @@ if [[ "$needs_install" -eq 1 ]]; then
     python
   do
     if command -v "$candidate" >/dev/null 2>&1 && "$candidate" - <<'PY' >/dev/null 2>&1
-import tkinter
+from PySide6.QtWidgets import QApplication
 PY
     then
       PYTHON_FOR_INSTALL="$candidate"
@@ -240,17 +275,17 @@ PY
 
   if [[ -n "$PYTHON_FOR_INSTALL" ]]; then
     if ! run_install_with_window >> "$LOG_FILE" 2>&1; then
-      show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/SIC OPTO Downloader/app.log"
+      show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/Opto Downloader/app.log"
       exit 1
     fi
   elif ! printf 'n\n' | ./install_macos.sh >> "$LOG_FILE" 2>&1; then
-    show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/SIC OPTO Downloader/app.log"
+    show_dialog "A instalacao falhou. Ve o log em ~/Library/Logs/Opto Downloader/app.log"
     exit 1
   fi
 fi
 
-if ! ".venv/bin/python" v3.py >> "$LOG_FILE" 2>&1; then
-  show_dialog "A aplicacao fechou com erro. Ve o log em ~/Library/Logs/SIC OPTO Downloader/app.log"
+if ! ".venv/bin/python" opto_app.py >> "$LOG_FILE" 2>&1; then
+  show_dialog "A aplicacao fechou com erro. Ve o log em ~/Library/Logs/Opto Downloader/app.log"
   exit 1
 fi
 EOF
@@ -270,7 +305,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
   <key>CFBundleExecutable</key>
   <string>$DISPLAY_NAME</string>
   <key>CFBundleIdentifier</key>
-  <string>pt.sicopto.downloader</string>
+  <string>pt.optodownloader.app</string>
   <key>CFBundleIconFile</key>
   <string>app-icon.icns</string>
   <key>CFBundleName</key>
@@ -292,7 +327,7 @@ EOF
 ln -s /Applications "$STAGING_DIR/Applications"
 
 hdiutil create \
-  -volname "SIC OPTO Downloader" \
+  -volname "Opto Downloader" \
   -srcfolder "$STAGING_DIR" \
   -ov \
   -format UDZO \

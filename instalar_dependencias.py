@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Instalador de Dependências — SIC OPTO Downloader
+Instalador de Dependências — Opto Downloader
 =================================================
-Corre este script UMA VEZ antes de usar o v3.py
+Corre este script UMA VEZ antes de usar o opto_app.py
 """
 
 import sys
@@ -22,13 +22,9 @@ PROJECT_DIR = Path(__file__).resolve().parent
 VENDOR_DIR = PROJECT_DIR / "vendor"
 BIN_DIR = VENDOR_DIR / "bin"
 TOOLS_DIR = VENDOR_DIR / "tools"
-EXTENSIONS_DIR = VENDOR_DIR / "extensions"
-UBLOCK_DIR = EXTENSIONS_DIR / "ublock-origin-lite"
 SECRETS_DIR = PROJECT_DIR / "secrets"
 CONFIG_DIR = PROJECT_DIR / "config"
 CONFIG_FILE = CONFIG_DIR / "sic_opto_config.json"
-DEFAULT_PROFILE_DIR = PROJECT_DIR / "chrome-debug-profile"
-UBLOCK_LITE_RELEASES_API = "https://api.github.com/repos/uBlockOrigin/uBOL-home/releases/latest"
 
 # ── Saída/cores no terminal ──────────────────────────────────────────────────
 try:
@@ -99,7 +95,7 @@ def pip_install(package, import_name=None, extra_args=None):
 
 # ── Verificar ferramenta externa ──────────────────────────────────────────────
 def resolve_tool(name):
-    """Procura no PATH e nas pastas locais usadas pelo v3.py."""
+    """Procura no PATH e nas pastas locais usadas pelo opto_app.py."""
     if not name:
         return None
 
@@ -283,7 +279,7 @@ def install_mp4decrypt():
             mp4d = exes[0]
             if PLATFORM != "Windows":
                 mp4d.chmod(0o755)
-            # Copiar para vendor/bin para coincidir com o v3.py
+            # Copiar para vendor/bin para coincidir com o opto_app.py
             final_dir = BIN_DIR
             final_dir.mkdir(parents=True, exist_ok=True)
             final = final_dir / exe_name
@@ -331,118 +327,20 @@ def check_wvd():
         return False
 
 
-# ── Preparar perfil Chrome ───────────────────────────────────────────────────
-def ensure_chrome_profile():
-    DEFAULT_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-    config = {}
-    if CONFIG_FILE.exists():
-        try:
-            config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            config = {}
-
-    changed = False
-    if not config.get("profile_dir"):
-        config["profile_dir"] = "chrome-debug-profile"
-        changed = True
-    if not config.get("profile_name"):
-        config["profile_name"] = "Default"
-        changed = True
-    if "h265" in config:
-        config.pop("h265", None)
-        changed = True
-
-    if changed or not CONFIG_FILE.exists():
-        CONFIG_FILE.write_text(json.dumps(config, indent=2, ensure_ascii=False),
-                               encoding="utf-8")
-
-    ok(f"Perfil Chrome preparado: {DEFAULT_PROFILE_DIR}")
-    return True
-
-
-# ── uBlock Origin Lite ───────────────────────────────────────────────────────
-def install_ublock_origin_lite():
-    """
-    Instala uBlock Origin Lite como extensão unpacked local para Chrome.
-    O v3.py carrega esta pasta com --load-extension.
-    """
-    manifest = UBLOCK_DIR / "manifest.json"
-    if manifest.exists():
-        ok(f"uBlock Origin Lite encontrado: {UBLOCK_DIR}")
-        return True
-
-    EXTENSIONS_DIR.mkdir(parents=True, exist_ok=True)
-    try:
-        release = fetch_json(UBLOCK_LITE_RELEASES_API)
-        assets = release.get("assets", [])
-        asset = None
-        for item in assets:
-            name = item.get("name", "").lower()
-            if name.endswith(".zip") and "chromium" in name:
-                asset = item
-                break
-        if not asset:
-            warn("Release do uBlock Origin Lite sem pacote Chromium MV3.")
-            return False
-
-        zip_url = asset["browser_download_url"]
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_dir = Path(tmp_dir)
-            zip_path = tmp_dir / asset["name"]
-            extract_dir = tmp_dir / "extract"
-            extract_dir.mkdir()
-
-            info(f"A descarregar uBlock Origin Lite: {asset['name']}")
-            download_file(zip_url, zip_path)
-            with zipfile.ZipFile(zip_path, "r") as z:
-                z.extractall(extract_dir)
-
-            manifest_hits = list(extract_dir.rglob("manifest.json"))
-            if not manifest_hits:
-                warn("Pacote uBlock sem manifest.json.")
-                return False
-
-            source_dir = manifest_hits[0].parent
-            if UBLOCK_DIR.exists():
-                shutil.rmtree(UBLOCK_DIR)
-            shutil.copytree(source_dir, UBLOCK_DIR)
-
-        ok(f"uBlock Origin Lite instalado: {UBLOCK_DIR}")
-        return True
-    except Exception as e:
-        warn(f"Não foi possível instalar uBlock Origin Lite automaticamente: {e}")
-        print("    Podes continuar sem isto, ou instalar manualmente a extensão no Chrome.")
-        return False
-
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     BIN_DIR.mkdir(parents=True, exist_ok=True)
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
-    EXTENSIONS_DIR.mkdir(parents=True, exist_ok=True)
     SECRETS_DIR.mkdir(parents=True, exist_ok=True)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     print()
     print(BOLD("╔══════════════════════════════════════════════╗"))
-    print(BOLD("║   SIC OPTO — Instalador de Dependências      ║"))
+    print(BOLD("║   Opto Downloader — Dependências             ║"))
     print(BOLD("╚══════════════════════════════════════════════╝"))
     print(f"  Python {sys.version.split()[0]} | {PLATFORM}")
 
     results = {}
-
-    # ── 0. Estrutura local
-    sep()
-    print(BOLD("  0. Pastas do projeto"))
-    print()
-    results["chrome-profile"] = ensure_chrome_profile()
-
-    sep()
-    print(BOLD("  0.1. Extensão do Chrome"))
-    print()
-    results["ublock-origin-lite"] = install_ublock_origin_lite()
 
     # ── 1. Pacotes Python
     sep()
@@ -450,11 +348,10 @@ def main():
     print()
 
     pkgs = [
+        ("PySide6",          "PySide6",    None),
         ("yt-dlp",           "yt_dlp",     None),
         ("requests",         "requests",   None),
         ("pywidevine",       "pywidevine", None),
-        ("selenium",         "selenium",   None),
-        ("websocket-client", "websocket",  None),
     ]
     for pkg, imp, extra in pkgs:
         results[pkg] = pip_install(pkg, imp, extra)
@@ -492,7 +389,7 @@ def main():
 
     print()
     if all_ok:
-        print(GREEN(BOLD("  [OK] Tudo instalado! Podes correr: python v3.py")))
+        print(GREEN(BOLD("  [OK] Tudo instalado! Podes correr: python opto_app.py")))
     else:
         print(YELLOW(BOLD("  ⚠ Algumas dependências precisam de instalação manual.")))
         print(YELLOW("    Consulta as instruções acima e o ficheiro README.md"))

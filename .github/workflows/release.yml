@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "v3.py"
+      - "opto_app.py"
+      - "opto_api_scraper.py"
+      - "opto_api_media_resolver.py"
       - "instalar_dependencias.py"
       - "scripts/**"
       - "platform/**"
@@ -49,7 +51,7 @@ jobs:
           else
             latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || true)"
             if [[ -z "$latest" ]]; then
-              version="v3.1.0"
+              version="v4.0.0"
             elif [[ "$latest" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               major="${BASH_REMATCH[1]}"
               minor="${BASH_REMATCH[2]}"
@@ -161,6 +163,6 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: SIC OPTO Downloader ${{ needs.prepare.outputs.version }}
+          name: Opto Downloader ${{ needs.prepare.outputs.version }}
           draft: ${{ needs.prepare.outputs.draft }}
           files: release-assets/*

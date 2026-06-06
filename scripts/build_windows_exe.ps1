@@ -5,25 +5,29 @@ param(
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath (Join-Path $PSScriptRoot "..")
 
-$name = "sic-opto-downloader"
+$name = "opto-downloader"
 if ($Version) {
     $name = "$name-$Version"
 }
 $exeName = "$name-windows"
 
 python -m pip install --upgrade pip
-python -m pip install pyinstaller yt-dlp requests pywidevine selenium websocket-client
+python -m pip install pyinstaller PySide6 yt-dlp requests pywidevine
 
+$dataSep = ";"
 $pyinstallerArgs = @(
     "--noconfirm",
     "--clean",
     "--onefile",
     "--windowed",
     "--name", $exeName,
+    "--add-data", "assets${dataSep}assets",
+    "--hidden-import", "PySide6.QtMultimedia",
+    "--hidden-import", "PySide6.QtMultimediaWidgets",
     "--collect-all", "pywidevine",
     "--collect-all", "pymp4",
     "--collect-all", "google",
-    "v3.py"
+    "opto_app.py"
 )
 
 if (Test-Path -LiteralPath "assets\app-icon.ico") {

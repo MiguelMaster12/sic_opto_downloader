@@ -8,4 +8,4 @@ if [[ ! -x ".venv/bin/python" ]]; then
   exit 1
 fi
 
-".venv/bin/python" v3.py
+".venv/bin/python" opto_app.py

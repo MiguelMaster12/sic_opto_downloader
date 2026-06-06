@@ -35,7 +35,7 @@ function Find-Python {
 }
 
 Write-Host ""
-Write-Host "=== SIC OPTO Downloader - Instalador Windows ==="
+Write-Host "=== Opto Downloader - Instalador Windows ==="
 Write-Host ""
 
 $python = Find-Python

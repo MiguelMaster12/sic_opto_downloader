@@ -15,3 +15,7 @@ vendor/
 *.webm
 *.part
 *.invalid.mp4
+
+# Generated local API test outputs
+episodios.json
+opto_diag.json

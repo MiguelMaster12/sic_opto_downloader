@@ -7,4 +7,4 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
     exit 1
 }
 
-& $venvPython v3.py
+& $venvPython opto_app.py

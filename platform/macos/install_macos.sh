@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo
-echo "=== SIC OPTO Downloader - Instalador macOS ==="
+echo "=== Opto Downloader - Instalador macOS ==="
 echo
 
 find_python() {

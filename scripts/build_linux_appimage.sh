@@ -9,8 +9,8 @@ if [[ $# -gt 1 ]]; then
 fi
 
 VERSION="${1:-}"
-APP_NAME="sic-opto-downloader"
-DISPLAY_NAME="SIC OPTO Downloader"
+APP_NAME="opto-downloader"
+DISPLAY_NAME="Opto Downloader"
 DIST_DIR="release-dist"
 BUILD_DIR="$DIST_DIR/linux-build"
 APPDIR="$BUILD_DIR/AppDir"
@@ -25,7 +25,7 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps" "$DIST_DIR"
 
 python3 -m pip install --upgrade pip
-python3 -m pip install pyinstaller yt-dlp requests pywidevine selenium websocket-client
+python3 -m pip install pyinstaller PySide6 yt-dlp requests pywidevine
 
 python3 -m PyInstaller \
   --noconfirm \
@@ -33,10 +33,13 @@ python3 -m PyInstaller \
   --onefile \
   --windowed \
   --name "$PACKAGE_NAME" \
+  --add-data "assets:assets" \
+  --hidden-import PySide6.QtMultimedia \
+  --hidden-import PySide6.QtMultimediaWidgets \
   --collect-all pywidevine \
   --collect-all pymp4 \
   --collect-all google \
-  v3.py
+  opto_app.py
 
 cp "dist/$PACKAGE_NAME" "$APPDIR/usr/bin/$APP_NAME"
 chmod +x "$APPDIR/usr/bin/$APP_NAME"
