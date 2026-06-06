@@ -40,6 +40,9 @@ if (-not $isccPath) {
 
 python -m pip install --upgrade pip
 python -m pip install pyinstaller PySide6 yt-dlp requests pywidevine
+$env:OPTO_FORCE_VENDOR_TOOLS = "1"
+python instalar_dependencias.py
+Remove-Item Env:\OPTO_FORCE_VENDOR_TOOLS -ErrorAction SilentlyContinue
 
 $dataSep = ";"
 $pyinstallerArgs = @(
@@ -49,6 +52,7 @@ $pyinstallerArgs = @(
     "--windowed",
     "--name", $distName,
     "--add-data", "assets${dataSep}assets",
+    "--add-data", "vendor${dataSep}vendor",
     "--hidden-import", "PySide6.QtMultimedia",
     "--hidden-import", "PySide6.QtMultimediaWidgets",
     "--collect-all", "pywidevine",

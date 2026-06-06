@@ -25,6 +25,7 @@ TOOLS_DIR = VENDOR_DIR / "tools"
 SECRETS_DIR = PROJECT_DIR / "secrets"
 CONFIG_DIR = PROJECT_DIR / "config"
 CONFIG_FILE = CONFIG_DIR / "sic_opto_config.json"
+FORCE_VENDOR_TOOLS = os.environ.get("OPTO_FORCE_VENDOR_TOOLS") == "1"
 
 # ── Saída/cores no terminal ──────────────────────────────────────────────────
 try:
@@ -145,7 +146,7 @@ def check_tool(name):
 
 # ── Instalar ffmpeg ───────────────────────────────────────────────────────────
 def install_ffmpeg():
-    if check_tool("ffmpeg"):
+    if not FORCE_VENDOR_TOOLS and check_tool("ffmpeg"):
         return True
 
     print()
@@ -211,7 +212,7 @@ def install_ffmpeg():
 
 # ── Instalar mp4decrypt (Bento4) ──────────────────────────────────────────────
 def install_mp4decrypt():
-    if check_tool("mp4decrypt"):
+    if not FORCE_VENDOR_TOOLS and check_tool("mp4decrypt"):
         return True
 
     print()

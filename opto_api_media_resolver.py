@@ -52,6 +52,11 @@ except ImportError:
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+FROZEN_DIRS = []
+if getattr(sys, "frozen", False):
+    FROZEN_DIRS.append(Path(sys.executable).resolve().parent)
+    if hasattr(sys, "_MEIPASS"):
+        FROZEN_DIRS.append(Path(sys._MEIPASS).resolve())
 DEFAULT_OUTPUT_DIR = SCRIPT_DIR / "downloads"
 SECRETS_DIR = SCRIPT_DIR / "secrets"
 VENDOR_DIR = SCRIPT_DIR / "vendor"
@@ -129,17 +134,30 @@ def resolve_tool(name: str):
         found = shutil.which(candidate)
         if found:
             return found
-    for folder in (
+    local_folders = [
         VENDOR_DIR / "bin",
         VENDOR_DIR / "tools",
         SCRIPT_DIR / "bin",
         SCRIPT_DIR / "tools",
         SCRIPT_DIR,
+    ]
+    for base in FROZEN_DIRS:
+        local_folders.extend([
+            base / "vendor" / "bin",
+            base / "vendor" / "tools",
+            base / "bin",
+            base / "tools",
+            base,
+        ])
+
+    local_folders.extend([
         Path.home() / "Documents" / "sic-opto-downloader-macos" / "vendor" / "bin",
         Path.home() / "Documents" / "sic-opto-downloader-macos" / "vendor" / "tools",
         Path.home() / "Downloads" / "sic-opto-downloader-macos" / "vendor" / "bin",
         Path.home() / "Downloads" / "sic-opto-downloader-macos" / "vendor" / "tools",
-    ):
+    ])
+
+    for folder in local_folders:
         if not folder.exists():
             continue
         for candidate in candidates:

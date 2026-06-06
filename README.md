@@ -53,8 +53,8 @@ O projeto não inclui credenciais, contas, conteúdos, ficheiros `.wvd`, nem qua
 - Python 3.9 ou superior
 - Conta OPTO com acesso legítimo ao conteúdo
 - Ficheiro `.wvd` pessoal colocado em `secrets/`, `~/.wvd/` ou numa pasta antiga da app
-- `ffmpeg` e `ffprobe`
-- `mp4decrypt` do Bento4
+- `ffmpeg` e `ffprobe` (incluídos no instalador Windows)
+- `mp4decrypt` do Bento4 (incluído no instalador Windows)
 
 > O ficheiro `.wvd` **não é fornecido** por este projeto.
 > Sem um `.wvd` válido, a ferramenta pode analisar e listar conteúdos, mas **não consegue desencriptar nem concluir downloads protegidos**.
@@ -114,7 +114,7 @@ Ou instala manualmente:
 pip install PySide6 requests pywidevine yt-dlp
 ```
 
-Também precisas de `ffmpeg`, `ffprobe` e `mp4decrypt` (Bento4) disponíveis no PATH.
+Também precisas de `ffmpeg`, `ffprobe` e `mp4decrypt` (Bento4) disponíveis no PATH. No instalador Windows estes binários são incluídos automaticamente.
 
 **Windows**
 
