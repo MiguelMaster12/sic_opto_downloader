@@ -51,6 +51,10 @@ except ImportError:
     sys.exit(1)
 
 
+SUBPROCESS_KW = {}
+if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+    SUBPROCESS_KW["creationflags"] = subprocess.CREATE_NO_WINDOW
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 FROZEN_DIRS = []
 if getattr(sys, "frozen", False):
@@ -416,6 +420,7 @@ def run_cmd(cmd, cwd=None, line_filter=None):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        **SUBPROCESS_KW,
     )
     for line in proc.stdout or []:
         if should_cancel():
@@ -445,6 +450,7 @@ def run_cmd_quiet(cmd, cwd=None):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        **SUBPROCESS_KW,
     )
     out = []
     while True:
@@ -494,6 +500,7 @@ def resolve_video_format_id(mpd_url, quality):
         stderr=subprocess.PIPE,
         text=True,
         timeout=30,
+        **SUBPROCESS_KW,
     )
     if proc.returncode != 0:
         log(f"yt-dlp -J falhou; a usar bestvideo: {proc.stderr[:300]}")
@@ -532,6 +539,7 @@ def validate_final_media(path):
         capture_output=True,
         text=True,
         timeout=30,
+        **SUBPROCESS_KW,
     )
     if proc.returncode != 0:
         log("ffprobe falhou.")

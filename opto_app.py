@@ -60,6 +60,10 @@ import opto_api_media_resolver as media
 import opto_api_scraper as series_api
 
 
+SUBPROCESS_KW = {}
+if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+    SUBPROCESS_KW["creationflags"] = subprocess.CREATE_NO_WINDOW
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_OUTPUT_DIR = SCRIPT_DIR / "downloads"
 CONFIG_DIR = SCRIPT_DIR / "config"
@@ -81,7 +85,7 @@ def _detect_version() -> str:
         import subprocess as _sp
         out = _sp.check_output(
             ["git", "describe", "--tags", "--abbrev=0"],
-            cwd=SCRIPT_DIR, stderr=_sp.DEVNULL, text=True,
+            cwd=SCRIPT_DIR, stderr=_sp.DEVNULL, text=True, **SUBPROCESS_KW,
         ).strip().lstrip("v")
         if out:
             return out
@@ -1220,6 +1224,7 @@ class GenerateWvdThread(QThread):
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                **SUBPROCESS_KW,
             )
             for line in proc.stdout or []:
                 self.log_signal.emit(line.rstrip())
