@@ -118,8 +118,28 @@ if (-not $7z) {
     throw "7-Zip nao encontrado. Garante que o step 'Install 7-Zip' correu antes."
 }
 
-& $7z a -tzip -mx=5 $zipPath "dist_win\$exeName\*"
-if ($LASTEXITCODE -ne 0) { throw "7-Zip falhou com codigo $LASTEXITCODE" }
+# Adiciona README de instalacao dentro da pasta antes de zipar
+$readmePath = "dist_win\$exeName\LEIA-ME.txt"
+Set-Content -Encoding UTF8 $readmePath @"
+SIC OPTO Downloader - Instrucoes de instalacao
+===============================================
+
+1. Extrai TODA esta pasta para um local a tua escolha.
+   (ex: C:\Programs\SIC OPTO Downloader\)
+
+2. Abre a pasta extraida e executa o ficheiro:
+   $exeName.exe
+
+IMPORTANTE: Nao moves o .exe para fora da pasta.
+Todos os ficheiros da pasta sao necessarios para a app funcionar.
+"@
+
+# Zipa a partir de dist_win para o ZIP nao incluir o caminho "dist_win" no interior
+Push-Location "dist_win"
+& $7z a -tzip -mx=5 "..\$zipPath" "$exeName"
+$zipExit = $LASTEXITCODE
+Pop-Location
+if ($zipExit -ne 0) { throw "7-Zip falhou com codigo $zipExit" }
 Write-Host "ZIP criado: $zipPath"
 
 # Copia também a pasta descomprimida caso seja útil
