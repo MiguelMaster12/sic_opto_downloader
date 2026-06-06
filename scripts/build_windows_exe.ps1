@@ -64,6 +64,11 @@ if (-not (Test-Path "$bento4Out\mp4decrypt.exe")) {
 # ---------------------------------------------------------------------------
 # 3. PyInstaller — onedir (sem extração para %TEMP%)
 # ---------------------------------------------------------------------------
+Write-Host ">> Verificar arquitetura..."
+Write-Host "PROCESSOR_ARCHITECTURE: $env:PROCESSOR_ARCHITECTURE"
+python -c "import struct; print('Python bits:', struct.calcsize('P')*8)"
+python -c "import platform; print('Machine:', platform.machine())"
+
 Write-Host ">> Construir EXE com PyInstaller (onedir)..."
 
 $dataSep = ";"
@@ -73,6 +78,7 @@ $pyinstallerArgs = @(
     "--clean",
     "--onedir",           # pasta fixa em vez de extração para %TEMP%
     "--windowed",
+    "--target-arch", "x86_64",
     "--name", $exeName,
     "--distpath", "dist_win",
     "--add-data", "assets${dataSep}assets",
