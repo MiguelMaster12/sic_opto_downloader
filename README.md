@@ -1,11 +1,11 @@
-# SIC OPTO Downloader
+# OPTO Downloader
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/miguelmaster12)
 
-Ferramenta local para analisar, reproduzir temporariamente e descarregar episódios SIC OPTO usando APIs HTTP. Não usa Selenium, Playwright nem Chrome.
+Ferramenta local para analisar, reproduzir temporariamente e descarregar episódios OPTO usando APIs HTTP. Não usa Selenium, Playwright nem Chrome.
 
 Uso pessoal apenas. Requer acesso legítimo ao conteúdo e um ficheiro `.wvd` próprio para obter keys Widevine.
 
@@ -51,7 +51,7 @@ O projeto não inclui credenciais, contas, conteúdos, ficheiros `.wvd`, nem qua
 ## 📋 Requisitos
 
 - Python 3.9 ou superior
-- Conta SIC OPTO com acesso legítimo ao conteúdo
+- Conta OPTO com acesso legítimo ao conteúdo
 - Ficheiro `.wvd` pessoal colocado em `secrets/`, `~/.wvd/` ou numa pasta antiga da app
 - `ffmpeg` e `ffprobe`
 - `mp4decrypt` do Bento4
@@ -96,8 +96,8 @@ Se descarregaste um ZIP, extrai o conteúdo para uma pasta à tua escolha.
 Se instalaste pelo `.dmg` e o macOS bloquear a app por programador não verificado, executa:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/SIC OPTO Downloader.app"
-open "/Applications/SIC OPTO Downloader.app"
+xattr -dr com.apple.quarantine "/Applications/OPTO Downloader.app"
+open "/Applications/OPTO Downloader.app"
 ```
 
 ### 3. Instalação Local (a partir do ZIP ou repositório)
@@ -361,7 +361,7 @@ Apaga a pasta onde extraíste o ZIP ou remove o `.exe` que descarregaste.
 **macOS**
 
 ```bash
-rm -rf "/Applications/SIC OPTO Downloader.app"
+rm -rf "/Applications/OPTO Downloader.app"
 ```
 
 **Linux**
@@ -422,8 +422,8 @@ Enquanto a app não estiver assinada/notarizada pela Apple, o macOS pode mostrar
 Para abrir depois de instalar em `Applications`:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/SIC OPTO Downloader.app"
-open "/Applications/SIC OPTO Downloader.app"
+xattr -dr com.apple.quarantine "/Applications/OPTO Downloader.app"
+open "/Applications/OPTO Downloader.app"
 ```
 
 Também podes tentar abrir com botão direito no Finder e escolher **Abrir**.
@@ -448,7 +448,7 @@ Coloca o ficheiro `.wvd` em qualquer uma dessas localizações.
 
 Confirma que:
 
-- a sessão na SIC OPTO está ativa e válida;
+- a sessão na OPTO está ativa e válida;
 - consegues reproduzir o conteúdo num browser normal;
 - a conta possui acesso ao conteúdo pretendido.
 </details>
