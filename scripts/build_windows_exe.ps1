@@ -70,7 +70,8 @@ $outputDir = (Resolve-Path -LiteralPath "release-dist").Path
 
 $iconLine = ""
 if (Test-Path -LiteralPath "assets\app-icon.ico") {
-    $iconLine = "SetupIconFile=assets\app-icon.ico"
+    $iconPath = (Resolve-Path -LiteralPath "assets\app-icon.ico").Path
+    $iconLine = "SetupIconFile=$iconPath"
 }
 
 $appVersion = if ($Version) { $Version.TrimStart("v") } else { "1.0.0" }
@@ -120,5 +121,8 @@ Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(
 Set-Content -LiteralPath $issPath -Value $issContent -Encoding UTF8
 
 & $isccPath $issPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao criar instalador com Inno Setup (codigo $LASTEXITCODE)."
+}
 
 Write-Host "Instalador criado: release-dist\$setupName.exe"
