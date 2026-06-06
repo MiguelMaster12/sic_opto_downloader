@@ -11,7 +11,7 @@ if ($Version) {
 $exeName = "$name-windows"
 
 # ---------------------------------------------------------------------------
-# 1. Dependências Python 
+# 1. Dependências Python
 # ---------------------------------------------------------------------------
 Write-Host ">> Instalar dependências Python..."
 python -m pip install --upgrade pip
@@ -95,7 +95,7 @@ if (Test-Path -LiteralPath "assets\app-icon.ico") {
 python -m PyInstaller @pyinstallerArgs
 
 # ---------------------------------------------------------------------------
-# 4. Empacotar em ZIP para distribuição
+# 4. Empacotar em ZIP para distribuição (7-Zip para evitar corrupção)
 # ---------------------------------------------------------------------------
 Write-Host ">> Empacotar em ZIP..."
 New-Item -ItemType Directory -Force -Path "release-dist" | Out-Null
@@ -103,7 +103,17 @@ New-Item -ItemType Directory -Force -Path "release-dist" | Out-Null
 $zipPath = "release-dist\$exeName.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
-Compress-Archive -Path "dist_win\$exeName\*" -DestinationPath $zipPath
+$7z = "C:\Program Files\7-Zip\7z.exe"
+if (-not (Test-Path $7z)) {
+    # fallback caso o path seja diferente
+    $7z = (Get-Command 7z -ErrorAction SilentlyContinue).Source
+}
+if (-not $7z) {
+    throw "7-Zip nao encontrado. Garante que o step 'Install 7-Zip' correu antes."
+}
+
+& $7z a -tzip -mx=5 $zipPath "dist_win\$exeName\*"
+if ($LASTEXITCODE -ne 0) { throw "7-Zip falhou com codigo $LASTEXITCODE" }
 Write-Host "ZIP criado: $zipPath"
 
 # Copia também a pasta descomprimida caso seja útil

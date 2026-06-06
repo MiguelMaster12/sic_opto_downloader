@@ -97,6 +97,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install 7-Zip
+        run: choco install 7zip -y
       - name: Build Windows EXE
         shell: pwsh
         run: scripts/build_windows_exe.ps1 "${{ needs.prepare.outputs.version }}"
